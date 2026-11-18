@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🧾 QA — obuna, qarz, ro'yxat va xodim
+- **Sana:** 2026-11-18
+- **Tuzatilgan Fayllar:**
+  - [`src/utils/superAdminBilling.js`](src/utils/superAdminBilling.js)
+  - [`src/lib/patientBalance.js`](src/lib/patientBalance.js)
+  - [`api/admin.js`](api/admin.js)
+  - [`src/pages/Patients.jsx`](src/pages/Patients.jsx)
+- **Muammo Tavsifi:** MRR faqat maxsus narxni yig'di. To'lov daftari bo'sh edi. Yangi klinika sinovga tushardi. Qisman to'lov qarzni 0 qilardi. Bemor ro'yxati yangilangach ham bo'sh qolardi.
+- **Sababi:** Katalog narxi qo'shilmagan. Ledger `subscription_payments` ni o'qimagan. Ochiq register har klinikani 14 kunlik sinov qilgan. Qarz hisobi reja va debt qatorini bir-birini yo'qotgan. So'rov keshi klinika id siz bo'sh natijani ushlab qolgan.
+- **Qanday tuzatildi:** Faol obuna narxi maxsus yoki katalog. Daftar server to'lovlari va yechimlaridan yig'iladi. Super admin yaratish alohida endpoint. Qarz = hisob − to'lov. Ro'yxat keshi klinika id bilan.
+- **Qaytalamaslik choralari:** `node scripts/assert-qa-fixes.mjs` o'tsin. Ochiq `/api/auth?action=register` ni yana to'langan holat qabul qiladigan qilmang. Pending uchrashuv rejasini kelishidan oldin qarzga qo'shmang. `patient-y2ii8ynf2` ga yozmang.
+
 ### 🔐 Phase 1 — parol va demo ma'lumot serverda
 - **Sana:** 2026-11-18
 - **Tuzatilgan Fayllar:**

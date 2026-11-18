@@ -71,6 +71,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatPhone, capitalizeName, formatCurrency } from '@/lib/utils';
 import { compressImage } from '@/utils/imageUpload';
 import { deleteTreatmentRow } from '@/lib/treatmentDelete';
+import { patientBalance } from '@/lib/patientBalance';
 const formatPlanName = (name) => {
   if (!name) return 'Davolash rejasi';
   const toothMatch = name.match(/\s*\(#\d+\)$/);
@@ -1851,18 +1852,6 @@ export default function PatientProfile() {
     const paymentsList = payments || [];
     const plansList = withOncePricing(plans || []);
 
-    const totalIncomes = paymentsList
-      .filter(p => p.type?.toLowerCase() === 'income')
-      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-    const totalDebts = paymentsList
-      .filter(p => p.type?.toLowerCase() === 'debt')
-      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-    const totalRefunds = paymentsList
-      .filter(p => p.type?.toLowerCase() === 'refund')
-      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
     const totalDiscounts = paymentsList
       .filter(p => p.type?.toLowerCase() === 'discount')
       .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
@@ -1881,43 +1870,9 @@ export default function PatientProfile() {
 
     const effectiveTotalDiscount = planDiscountsTotal > 0 ? planDiscountsTotal : totalDiscounts;
 
-    // Qarzdorlik hisoblash:
-    // Reja mavjud bo'lsa: qarz = sum(plan.total_price) - totalIncomes
-    // Agar alohida qarzlar bo'lsa: qarz = (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts)
-    let calculatedDebt = 0;
-    let calculatedPrepayment = 0;
-
-    if (plansList.length > 0) {
-      const billablePlansPrice = plansList.reduce((sum, plan) => {
-        const st = String(plan?.status || '').trim().toLowerCase();
-        if (['cancelled', 'canceled', 'otkaz'].includes(st)) return sum;
-        const apptPending = String(plan?.notes || '').includes('Uchrashuv orqali yaratilgan')
-          && !['in progress', 'completed', 'done', 'bajarildi'].includes(st);
-        if (apptPending) return sum;
-        return sum + (Number(plan.total_price) || 0);
-      }, 0);
-      if (billablePlansPrice > 0) {
-        const net = totalIncomes - billablePlansPrice - totalRefunds;
-        calculatedDebt = net < 0 ? Math.abs(net) : 0;
-        calculatedPrepayment = net > 0 ? net : 0;
-      } else if (totalDebts > 0) {
-        const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
-        calculatedDebt = net < 0 ? Math.abs(net) : 0;
-        calculatedPrepayment = net > 0 ? net : 0;
-      } else {
-        const net = totalIncomes - totalRefunds;
-        calculatedDebt = net < 0 ? Math.abs(net) : 0;
-        calculatedPrepayment = net > 0 ? net : 0;
-      }
-    } else if (totalDebts > 0) {
-      const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
-      calculatedDebt = net < 0 ? Math.abs(net) : 0;
-      calculatedPrepayment = net > 0 ? net : 0;
-    } else {
-      const net = totalIncomes - totalRefunds;
-      calculatedDebt = net < 0 ? Math.abs(net) : 0;
-      calculatedPrepayment = net > 0 ? net : 0;
-    }
+    const live = patientBalance(patient?.id, paymentsList, plansList);
+    const calculatedDebt = live.debt;
+    const calculatedPrepayment = Math.max(0, live.income + live.discounts - live.charges - live.refunds);
 
     // Chegirma foizini hisoblash
     const totalOriginalPlansPrice = plansList.reduce((sum, plan) => {
@@ -1936,13 +1891,13 @@ export default function PatientProfile() {
       : 0;
 
     return {
-      totalPaid: totalIncomes,
+      totalPaid: live.income,
       totalDebt: calculatedDebt,
       totalPrepayment: calculatedPrepayment,
       totalDiscount: effectiveTotalDiscount,
       discountPercent
     };
-  }, [payments, plans]);
+  }, [payments, plans, patient?.id]);
 
   const { totalPaid, totalDebt, totalPrepayment, totalDiscount, discountPercent } = financialData;
 

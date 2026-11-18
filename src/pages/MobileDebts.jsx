@@ -15,25 +15,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatPhone } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { format } from 'date-fns';
-
-// Telefon raqamini chiroyli formatlash
-const formatPhone = (phone) => {
-  if (!phone) return '--- --- -- --';
-  const digits = String(phone).replace(/\D/g, '');
-  // 998XXXXXXXXX → +998 XX XXX-XX-XX
-  if (digits.length === 12 && digits.startsWith('998')) {
-    return `+998 ${digits.slice(3, 5)} ${digits.slice(5, 8)}-${digits.slice(8, 10)}-${digits.slice(10, 12)}`;
-  }
-  // 9XXXXXXXXX (9 digits)
-  if (digits.length === 9) {
-    return `+998 ${digits.slice(0, 2)} ${digits.slice(2, 5)}-${digits.slice(5, 7)}-${digits.slice(7, 9)}`;
-  }
-  return phone;
-};
 
 const getPaymentMethodLabel = (method, t) => {
   if (!t) {

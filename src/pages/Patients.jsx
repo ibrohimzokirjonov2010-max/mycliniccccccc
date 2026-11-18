@@ -27,21 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatPhone } from '@/lib/utils';
+import { debtByPatient } from '@/lib/patientBalance';
+import { useClinicId } from '@/hooks/useClinicId';
 import { buildVisitIndex, isActiveTreatmentPatient, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 
-// Clean single-line phone number formatter (e.g. +998 90 123 45 67)
-const formatPhoneSingleLine = (phone) => {
-  if (!phone) return '—';
-  const digits = String(phone).replace(/\D/g, '');
-  if (digits.length === 12 && digits.startsWith('998')) {
-    return `+998 ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10, 12)}`;
-  }
-  if (digits.length === 9) {
-    return `+998 ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}`;
-  }
-  return phone;
-};
+const formatPhoneSingleLine = (phone) => formatPhone(phone);
 
 export default function Patients() {
   const navigate = useNavigate();
@@ -49,6 +40,7 @@ export default function Patients() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const { user, isDoctor } = useAuth();
+  const clinicId = useClinicId();
   
   // Orqaga qaytganda qidiruv/filtr/saralash holati tiklanadi (useRestorableState)
   const [search, setSearch] = useRestorableState('search', '');
@@ -105,8 +97,8 @@ export default function Patients() {
 
   // ─── Queries (TanStack Query) ──────────────────────────────────────────
   const { data: patientsData, isLoading, isFetching } = useQuery({
-    queryKey: ['patients', debouncedSearch, page, isDoctor, user?.id, doctorFilter?.id ?? null],
-    enabled: !!user,
+    queryKey: ['patients', clinicId, debouncedSearch, page, isDoctor, user?.id, doctorFilter?.id ?? null],
+    enabled: !!user && !!clinicId,
     queryFn: async () => {
       const offset = page * PAGE_SIZE;
       if (doctorFilter) {
@@ -142,8 +134,8 @@ export default function Patients() {
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['patients-stats', isDoctor, user?.id],
-    enabled: !!user,
+    queryKey: ['patients-stats', clinicId, isDoctor, user?.id],
+    enabled: !!user && !!clinicId,
     queryFn: async () => {
       try {
         if (isDoctor && user?.id) {
@@ -154,17 +146,19 @@ export default function Patients() {
             String(p.created_by_id) === String(user.id)
           );
 
-          const [appts, plans] = await Promise.all([
+          const [appts, plans, pays] = await Promise.all([
             base44.entities.Appointment.list('-date', 1000).catch(() => []),
             base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+            base44.entities.Payment.list('-created_date', 1000).catch(() => []),
           ]);
           const visitIndex = buildVisitIndex(appts, plans);
           const newCount = docPats.filter((p) => isNewPatient(p, visitIndex)).length;
 
           const activeCount = docPats.filter(isActiveTreatmentPatient).length;
+          const owed = debtByPatient(docPats, pays || [], plans || []);
 
-          const debtorCount = docPats.filter(p => (Number(p.total_debt) || 0) > 0).length;
-          const totalDebt = docPats.reduce((sum, p) => sum + (Number(p.total_debt) || 0), 0);
+          const debtorCount = docPats.filter(p => (owed[p.id] ?? (Number(p.total_debt) || 0)) > 0).length;
+          const totalDebt = docPats.reduce((sum, p) => sum + (owed[p.id] ?? (Number(p.total_debt) || 0)), 0);
           const totalPaid = docPats.reduce((sum, p) => sum + (Number(p.total_paid) || 0), 0);
 
           return {
@@ -173,22 +167,25 @@ export default function Patients() {
             active: activeCount,
             debtors: debtorCount,
             debt: totalDebt,
-            paid: totalPaid
+            paid: totalPaid,
+            owed,
           };
         }
 
-        const [allPatsRaw, appts, plans] = await Promise.all([
+        const [allPatsRaw, appts, plans, pays] = await Promise.all([
           base44.entities.Patient.list('-created_date', 500).catch(() => []),
           base44.entities.Appointment.list('-date', 1000).catch(() => []),
           base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+          base44.entities.Payment.list('-created_date', 1000).catch(() => []),
         ]);
         const allPats = allPatsRaw || [];
         const total = allPats.length || (await base44.entities.Patient.count().catch(() => 0));
         const visitIndex = buildVisitIndex(appts, plans);
         const newCount = allPats.filter((p) => isNewPatient(p, visitIndex)).length;
         const activeCount = allPats.filter(isActiveTreatmentPatient).length;
-        const debtorCount = allPats.filter(p => (Number(p.total_debt) || 0) > 0).length;
-        const totalDebt = allPats.reduce((sum, p) => sum + (Number(p.total_debt) || 0), 0);
+        const owed = debtByPatient(allPats, pays || [], plans || []);
+        const debtorCount = allPats.filter(p => (owed[p.id] ?? (Number(p.total_debt) || 0)) > 0).length;
+        const totalDebt = allPats.reduce((sum, p) => sum + (owed[p.id] ?? (Number(p.total_debt) || 0)), 0);
         const totalPaid = allPats.reduce((sum, p) => sum + (Number(p.total_paid) || 0), 0);
 
         return {
@@ -197,7 +194,8 @@ export default function Patients() {
           active: activeCount,
           debtors: debtorCount,
           debt: totalDebt,
-          paid: totalPaid
+          paid: totalPaid,
+          owed,
         };
       } catch (err) {
         console.error('Failed to fetch patient stats:', err);
@@ -280,11 +278,12 @@ export default function Patients() {
   // Accumulate patient list pages. Ignore the previous page while the next one is still loading,
   // otherwise a repeated page keeps "Ko'proq bemorlar yuklanmoqda..." on screen forever.
   useEffect(() => {
-    if (!patientsData || isFetching) return;
+    if (!Array.isArray(patientsData)) return;
     if (page === 0) {
       setAllPatients(patientsData);
       return;
     }
+    if (isFetching) return;
     setAllPatients(prev => {
       const existingIds = new Set(prev.map(p => p.id));
       const newItems = patientsData.filter(p => !existingIds.has(p.id));
@@ -333,7 +332,10 @@ export default function Patients() {
 
   // ─── Filter & Sorting Logic (Excel Grid) ─────────────────────────────────
   const filteredPatients = useMemo(() => {
-    let list = [...allPatients];
+    let list = allPatients.map((p) => {
+      const debt = stats?.owed?.[p.id];
+      return debt == null ? p : { ...p, total_debt: debt };
+    });
 
     // Status filter
     if (activeFilter === 'debtors') {
@@ -383,7 +385,7 @@ export default function Patients() {
     });
 
     return list;
-  }, [allPatients, activeFilter, sortField, sortOrder]);
+  }, [allPatients, activeFilter, sortField, sortOrder, stats?.owed]);
 
   const showAddressColumn = useMemo(() => {
     return filteredPatients.some(p => {
@@ -780,7 +782,7 @@ export default function Patients() {
                 {/* ─── Excel Table Body ────────────────── */}
                 <tbody className="divide-y divide-slate-200/70 text-xs">
                   {filteredPatients.map((p, idx) => {
-                    const debtAmount = Number(p.total_debt) || 0;
+                    const debtAmount = stats?.owed?.[p.id] ?? (Number(p.total_debt) || 0);
                     const paidAmount = Number(p.total_paid) || 0;
                     const isDebtor = debtAmount > 0;
                     const isCompact = density === 'compact';

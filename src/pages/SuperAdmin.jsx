@@ -58,6 +58,10 @@ import {
   stripAdminFields,
   formatMoney,
   webhookStatusFor,
+  monthlyPrice,
+  subscriptionHeadline,
+  serverRowsToLedger,
+  ledgerFromLastPayments,
 } from '@/utils/superAdminBilling';
 
 // SuperAdmin login server tomonida (/api/admin). Parol bundle'da saqlanmaydi.
@@ -171,6 +175,7 @@ export default function SuperAdmin() {
   const [clinics, setClinics] = useState([]);
   const [users, setUsers] = useState([]);
   const [subPayments, setSubPayments] = useState([]);
+  const [chargeRows, setChargeRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -336,8 +341,18 @@ export default function SuperAdmin() {
       const r = await adminApi('payments');
       const data = await r.json().catch(() => ({}));
       if (r.ok && Array.isArray(data.payments)) setSubPayments(data.payments);
+      if (r.ok && Array.isArray(data.charges)) setChargeRows(data.charges);
     } catch { /* hisobot ledger bilan ishlayveradi */ }
   };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const server = serverRowsToLedger(subPayments, chargeRows, clinics);
+    const dated = ledgerFromLastPayments(clinics, [...server, ...mergeLedgers(clinics, [])]);
+    const merged = mergeLedgers(clinics, [...readLedger(), ...server, ...dated]);
+    writeLedger(merged);
+    setLedger(merged);
+  }, [isLoggedIn, clinics, subPayments, chargeRows]);
 
   const handleLogout = () => {
     localStorage.removeItem('admin_auth');
@@ -635,7 +650,6 @@ export default function SuperAdmin() {
   };
 
   const stats = useMemo(() => {
-    let totalRevenue = 0;
     let atRisk = 0;
     let basicCount = 0;
     let proCount = 0;
@@ -645,21 +659,16 @@ export default function SuperAdmin() {
     let pastDueCount = 0;
     let expiringCount = 0;
     let expiredCount = 0;
-    let activeLifeCount = 0;
     let watchCount = 0;
 
     clinics.forEach(c => {
       const life = resolveLifecycle(c);
-      const fee = Number(c.monthly_fee || 0);
       if (life.key === 'trialing') trialCount++;
       else if (life.key === 'past_due') {
         pastDueCount++;
-        atRisk += fee;
+        atRisk += monthlyPrice(c);
       } else if (life.key === 'expiring') expiringCount++;
       else if (life.key === 'expired') expiredCount++;
-      else activeLifeCount++;
-
-      if (life.key === 'active' || life.key === 'expiring') totalRevenue += fee;
       if (life.days !== null && life.days >= 0 && life.days <= 15 && life.key !== 'expired') watchCount++;
       const resolvedPlan = resolveClinicPlan(c);
       if (resolvedPlan === 'basic') basicCount++;
@@ -682,7 +691,17 @@ export default function SuperAdmin() {
     const monthKey = (v) => String(v || '').slice(0, 7);
     const paidByMonth = {};
     const seenTxn = new Set();
-    subPayments.filter((p) => p.status === 'paid').forEach((p) => {
+    const chargeAsPayments = (chargeRows || []).filter((charge) => {
+      const txn = String(charge.click_payment_id || charge.transaction_parameter || '');
+      return !txn || !subPayments.some((payment) => String(payment.provider_txn_id || '') === txn);
+    }).map((charge) => ({
+      status: charge.status === 'success' ? 'paid' : charge.status,
+      amount: charge.amount,
+      paid_at: charge.created_at,
+      created_at: charge.created_at,
+      provider_txn_id: charge.click_payment_id || charge.transaction_parameter || '',
+    }));
+    [...subPayments, ...chargeAsPayments].filter((p) => p.status === 'paid').forEach((p) => {
       if (p.provider_txn_id) seenTxn.add(String(p.provider_txn_id));
       const k = monthKey(p.paid_at || p.created_at);
       paidByMonth[k] = (paidByMonth[k] || 0) + Number(p.amount || 0);
@@ -700,10 +719,11 @@ export default function SuperAdmin() {
     const upTo = (rows, key) => rows.filter((r) => r.created_at && monthKey(r.created_at) <= key).length;
     const clinicGrowth = buckets.map((m) => ({ name: m.name, clinics: upTo(clinics, m.key), users: upTo(users, m.key) }));
     const newClinicsThisMonth = clinics.filter((c) => monthKey(c.created_at) === buckets[5].key).length;
+    const headline = subscriptionHeadline(clinics);
 
     return { 
       total: clinics.length, 
-      active: activeLifeCount, 
+      active: headline.paid, 
       inactive: clinics.filter(c => c.status !== 'Active').length,
       expiring: expiringCount,
       expired: expiredCount,
@@ -712,7 +732,7 @@ export default function SuperAdmin() {
       watch: watchCount,
       atRisk,
       customCount,
-      mrr: totalRevenue,
+      mrr: headline.mrr,
       basicCount,
       proCount,
       premiumCount,
@@ -725,7 +745,7 @@ export default function SuperAdmin() {
       clinicGrowth,
       newClinicsThisMonth
     };
-  }, [clinics, users, subPayments, ledger]);
+  }, [clinics, users, subPayments, chargeRows, ledger]);
 
   // Filtered Clinics
   const filteredClinics = useMemo(() => {
@@ -818,7 +838,9 @@ export default function SuperAdmin() {
     try {
       const billing = stripAdminFields(normalizeClinicBilling({
         ...form,
-        password: form.password || editingClinic?.password || '',
+        password: editingClinic ? (editingClinic.password || '') : (form.password || ''),
+        owner_email: String(form.owner_email || '').trim(),
+        owner_phone: String(form.owner_phone || '').trim(),
       }));
       if (!billing.subscription_status) delete billing.subscription_status;
 
@@ -828,6 +850,21 @@ export default function SuperAdmin() {
         delete updatedClinic.admin_password;
         delete updatedClinic.admin_username;
         delete updatedClinic.admin_name;
+        const nextPassword = String(form.password || '').trim();
+        if (nextPassword) {
+          const response = await adminApi('set-admin-password', {
+            method: 'POST',
+            body: JSON.stringify({ clinic_id: editingClinic.id, password: nextPassword }),
+          });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok || body.ok === false) {
+            const known = {
+              weak_password: "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+              user_not_found: 'Klinika administratori topilmadi',
+            };
+            throw new Error(known[body.error] || 'Administrator paroli yangilanmadi');
+          }
+        }
         const newClinics = clinics.map(c => c.id === editingClinic.id ? updatedClinic : c);
         await base44.clinic.saveAll(newClinics);
         setClinics(newClinics);
@@ -924,7 +961,7 @@ export default function SuperAdmin() {
       const start = new Date();
       start.setDate(start.getDate() + 30);
       setForm({
-        id: '', name: '', password: Math.random().toString(36).substring(2, 8), 
+        id: '', name: '', password: Math.random().toString(36).slice(2, 12), 
         monthly_fee: shifoTariffs.legacyPortalMonthlyFee.pro, plan: 'pro', status: 'Active', 
         expires_at: start.toISOString().split('T')[0],
         last_payment_date: new Date().toISOString().split('T')[0],
@@ -1263,7 +1300,7 @@ export default function SuperAdmin() {
               <CreditCard className="w-4 h-4 text-teal-300" />
             </div>
             <div className="text-[28px] leading-none font-semibold text-white tabular-nums tracking-tight">{formatMoney(stats.mrr)}</div>
-            <p className="text-[11px] text-slate-500 mt-1">UZS · faol va tugayotgan</p>
+            <p className="text-[11px] text-slate-500 mt-1">UZS · {stats.active} ta faol obuna</p>
             <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/[0.05]">
               <span>Xavf ostida</span>
               <strong className="text-orange-200 tabular-nums">{formatMoney(stats.atRisk)}</strong>
@@ -2275,6 +2312,9 @@ export default function SuperAdmin() {
                   placeholder="star_med" 
                   className={FIELD} 
                 />
+                {!editingClinic && (
+                  <p className="text-[10px] leading-snug text-slate-500">Faqat lotin harflari, sonlar va _ belgisi. Masalan: star_med</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase">{editingClinic ? 'Yangi master parol' : 'Master parol *'}</Label>

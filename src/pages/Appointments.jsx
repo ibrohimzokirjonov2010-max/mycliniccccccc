@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useClinicId } from '@/hooks/useClinicId';
 import { Plus, CalendarDays, Search, ChevronLeft } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -46,6 +47,7 @@ const normalizeAppt = (a) => {
 export default function Appointments() {
   const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
+  const clinicId = useClinicId();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -95,15 +97,17 @@ export default function Appointments() {
   // ── React Query: Data fetching ──────────────────────────────────────────────
   // 🗄️ appointments — 2 daqiqa kesh. Sahifalar orasida o'tganda qayta yuklanmaydi.
   const { data: rawAppointments = [], isFetching: apptFetching } = useQuery({
-    queryKey: QUERY_KEYS.appointments,
+    queryKey: [...QUERY_KEYS.appointments, clinicId],
     queryFn: () => base44.entities.Appointment.list('-date', 500),
-    staleTime: 2 * 60 * 1000,
+    enabled: !!clinicId,
+    staleTime: 30 * 1000,
     select: (appts) => appts.map(normalizeAppt),
   });
 
   // 🗄️ patients — 5 daqiqa kesh
   const { data: patients = [] } = useQuery({
-    queryKey: ['patients', isDoctor, user?.id],
+    queryKey: ['patients', clinicId, isDoctor, user?.id],
+    enabled: !!clinicId,
     queryFn: async () => {
       if (isDoctor && user?.id) {
         const allPats = await base44.entities.Patient.list('-created_date', 500).catch(() => []);

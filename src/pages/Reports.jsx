@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useClinicId } from '@/hooks/useClinicId';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -19,6 +20,7 @@ const UZ_MONTHS = [
  */
 export default function Reports() {
   const { language } = useTranslation();
+  const clinicId = useClinicId();
   const [payments, setPayments] = useState([]);
   const [, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -57,16 +59,19 @@ export default function Reports() {
   const [srvSortOrder] = useState('desc');
 
   useEffect(() => {
+    if (!clinicId) return undefined;
+    let cancelled = false;
     async function load() {
       try {
         setLoading(true);
         const [pays, pats, appts, exps, users] = await Promise.all([
-          base44.entities.Payment.list('-date', 5000),
-          base44.entities.Patient.list('-created_date', 5000),
-          base44.entities.Appointment.list('-date', 5000),
-          base44.entities.Expense.list('-date', 5000),
+          base44.entities.Payment.list('-date', 1500),
+          base44.entities.Patient.list('-created_date', 500),
+          base44.entities.Appointment.list('-date', 800),
+          base44.entities.Expense.list('-date', 500),
           base44.entities.User.list('name', 100),
         ]);
+        if (cancelled) return;
         setPayments(pays || []);
         setPatients(pats || []);
         setAppointments(appts || []);
@@ -75,11 +80,17 @@ export default function Reports() {
       } catch (err) {
         console.error("Report load error:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
-  }, []);
+    const onUpdate = () => load();
+    window.addEventListener('crm-data-updated', onUpdate);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('crm-data-updated', onUpdate);
+    };
+  }, [clinicId]);
 
   const chartLocale = useMemo(() => {
     if (language === 'uz') return 'uz-UZ';

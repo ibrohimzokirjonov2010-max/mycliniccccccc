@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { localizePlanName } from '@/lib/planNameLabel';
+import { formatPhone } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/queryKeys';
@@ -47,12 +48,7 @@ const ageFromBirth = (bd) => {
   if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a -= 1;
   return a >= 0 && a < 130 ? a : null;
 };
-const formatPlanPhone = (ph) => {
-  const d = String(ph || '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
-  if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
-  return ph || '';
-};
+const formatPlanPhone = (ph) => (ph ? formatPhone(ph) : '');
 const pageNumbers = (cur, total) => {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const out = [1];

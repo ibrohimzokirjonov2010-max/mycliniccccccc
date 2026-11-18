@@ -143,6 +143,10 @@ class RequestCache {
       if (key.startsWith(`${entity}:`)) this._cache.delete(key);
     }
   }
+
+  static drop(key) {
+    this._cache.delete(key);
+  }
 }
 
 if (typeof window !== 'undefined') {
@@ -511,11 +515,15 @@ class HybridEntityLoader {
     if (!this.useSupabase) return this._localStorageList(orderBy, limit);
 
     // Request deduplication cache - bir xil so'rov 5 sek ichida qayta Supabase ga bormaydi
-    const cacheKey = RequestCache.getKey(this.entityName, 'list', [orderBy, limit, offset]);
+    const clinicId = this._getClinicId();
+    const cacheKey = RequestCache.getKey(this.entityName, 'list', [clinicId, orderBy, limit, offset]);
     const cached = RequestCache.get(cacheKey);
     if (cached) return cached;
 
-    const promise = this._doList(orderBy, limit, offset);
+    const promise = this._doList(orderBy, limit, offset).then((rows) => {
+      if (!Array.isArray(rows) || rows.length === 0) RequestCache.drop(cacheKey);
+      return rows;
+    });
     return RequestCache.set(cacheKey, promise);
   }
 
@@ -680,6 +688,13 @@ class HybridEntityLoader {
           });
         } catch (e) { /* ignore */ }
         return sanitizeUsers(merged);
+      }
+
+      if (this.entityName === 'Patient' || this.entityName === 'Appointment' || this.entityName === 'Payment') {
+        const localRows = this._getDeepLocalRecords(clinicId);
+        localRows.forEach((row) => {
+          if (row?.id && !enriched.find((item) => item.id === row.id)) enriched.unshift(row);
+        });
       }
 
       return enriched;
@@ -2118,6 +2133,42 @@ export const base44 = {
     },
 
     createClinic: async (clinicData, adminData) => {
+      // Super admin chooses status, expiry, and owner contacts. Public register still forces a trial.
+      let adminToken = '';
+      try { adminToken = JSON.parse(localStorage.getItem('admin_auth') || '{}').token || ''; } catch { adminToken = ''; }
+      if (adminToken && import.meta.env.VITE_SUPABASE_URL) {
+        const response = await fetch('/api/admin?action=create-clinic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+          body: JSON.stringify({
+            clinic: clinicData,
+            admin: {
+              id: adminData.id,
+              username: adminData.username,
+              password: adminData.password,
+              name: adminData.name,
+              full_name: adminData.full_name,
+            },
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 409) throw new Error(data.error === 'username_taken' ? 'Bu login band' : 'Ushbu Klinika ID band!');
+        if (response.ok && data?.ok) {
+          const { password: _pw, ...safeDraft } = clinicData;
+          try {
+            const localClinics = JSON.parse(localStorage.getItem('system_clinics') || '[]');
+            localClinics.push(safeDraft);
+            localStorage.setItem('system_clinics', JSON.stringify(localClinics));
+          } catch { /* ignore */ }
+          return safeDraft;
+        }
+        const known = {
+          weak_password: "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+          invalid_payload: "Klinika ma'lumotlari to'liq emas",
+          unauthorized: 'Super admin sessiyasi tugagan. Qayta kiring',
+        };
+        throw new Error(known[data?.error] || 'Klinika serverda yaratilmadi. Qayta urinib ko\'ring.');
+      }
       // 0. Server orqali (RLS yoqilganda anon yozolmaydi): klinika + admin, parol bcrypt bilan.
       if (import.meta.env.VITE_SUPABASE_URL) {
         const draft = {
@@ -2468,24 +2519,36 @@ export const base44 = {
       const plainPassword = newUser.password;
       delete newUser.password;
 
-      // ALWAYS save to localStorage first (guaranteed fallback for login)
-      try {
-        const existing = JSON.parse(localStorage.getItem('system_users') || '[]');
-        const alreadyExists = existing.find(u => u.username === newUser.username && u.clinic_id === newUser.clinic_id);
-        if (!alreadyExists) {
+      const rememberLocal = () => {
+        try {
+          const existing = JSON.parse(localStorage.getItem('system_users') || '[]');
+          const alreadyExists = existing.find(u => String(u.username || '').toLowerCase() === String(newUser.username || '').toLowerCase() && u.clinic_id === newUser.clinic_id);
+          if (alreadyExists) return;
           existing.push(newUser);
           localStorage.setItem('system_users', JSON.stringify(existing));
-          console.log('✅ User saved to localStorage:', newUser.username);
+        } catch (e) {
+          console.error('localStorage save failed:', e);
         }
-      } catch (e) {
-        console.error('localStorage save failed:', e);
-      }
+      };
+      const forgetLocal = () => {
+        try {
+          const existing = JSON.parse(localStorage.getItem('system_users') || '[]');
+          localStorage.setItem('system_users', JSON.stringify(existing.filter((user) => user.id !== newUser.id)));
+        } catch { /* ignore */ }
+      };
 
       if (import.meta.env.VITE_SUPABASE_URL) {
-        const saved = await base44.entities.User.create({ ...newUser, password: plainPassword });
-        return sanitizeUser(saved || newUser);
+        try {
+          const saved = await base44.entities.User.create({ ...newUser, password: plainPassword });
+          rememberLocal();
+          return sanitizeUser(saved || newUser);
+        } catch (error) {
+          forgetLocal();
+          throw error;
+        }
       }
 
+      rememberLocal();
       return sanitizeUser(newUser);
     },
 
