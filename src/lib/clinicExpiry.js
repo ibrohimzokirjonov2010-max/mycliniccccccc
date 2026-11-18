@@ -62,11 +62,30 @@ export function markTariffReminderShown(clinicId, now = new Date()) {
   localStorage.setItem(reminderStorageKey(clinicId), todayStamp(now));
 }
 
+export function clinicReadOnly(clinic) {
+  if (!clinic) return false;
+  return clinic.subscription_status === 'past_due' || clinic.access_mode === 'read_only';
+}
+
 export function clinicAccessClosed(clinic, now = new Date()) {
   if (!clinic) return false;
   const status = String(clinic.status || '');
   if (status === 'Inactive' || status === 'Blocked') return true;
+  if (clinicReadOnly(clinic)) return false;
   return isClinicExpired(clinic.expires_at, now);
+}
+
+function withBilling(row) {
+  if (!row || typeof row.logo !== 'string' || !row.logo.startsWith('[EXT]')) return row;
+  const end = row.logo.indexOf('[/EXT]');
+  if (end < 0) return row;
+  try {
+    const extra = JSON.parse(row.logo.slice(5, end)) || {};
+    const real = row.logo.slice(end + 6);
+    return { ...row, ...extra, logo: real.length > 400 ? '' : real };
+  } catch {
+    return row;
+  }
 }
 
 export function invalidateClinicExpiry(clinicId) {
@@ -82,13 +101,14 @@ export async function loadClinicAccess(clinicId) {
   if (hit && Date.now() - hit.at < 5000) return { clinic: hit.clinic };
   const { data, error } = await supabase
     .from('clinics')
-    .select('id,name,plan,status,expires_at,monthly_fee')
+    .select('id,name,plan,status,expires_at,monthly_fee,logo')
     .eq('id', id)
     .maybeSingle();
   if (error) return { clinic: null, error };
   if (!data) return { clinic: null, missing: true };
-  EXPIRY_CACHE.set(key, { clinic: data, at: Date.now() });
-  return { clinic: data };
+  const clinic = withBilling(data);
+  EXPIRY_CACHE.set(key, { clinic, at: Date.now() });
+  return { clinic };
 }
 
 export async function assertClinicNotExpired() {

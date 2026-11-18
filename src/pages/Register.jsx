@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, UserPlus, Loader2, 
@@ -11,26 +11,28 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
-import { crmAuthApi } from '@/api/supabaseClient';
+import { crmAuthApi, supabase } from '@/api/supabaseClient';
+import { slugifyClinic } from '@/lib/clinicSlug';
+import { signupFieldErrors } from '@/lib/signupRules';
 import { useAuth } from '@/lib/AuthContext';
 import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
-import { normalizeClinicBilling } from '@/utils/superAdminBilling';
 import { LANDING_PLANS, TRIAL_DAYS } from '@/config/landingPricing';
 import { CARD_BINDING_REQUIRED } from '@/config/cardBinding';
 import { attachCard, getBindingStatus, precheckCard } from '@/api/cardBindingClient';
 import CardBindingStep from '@/components/register/CardBindingStep';
 
-const CYR = { а:'a',б:'b',в:'v',г:'g',ғ:'g',д:'d',е:'e',ё:'yo',ж:'j',з:'z',и:'i',й:'y',к:'k',қ:'q',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ў:'o',ф:'f',х:'x',ҳ:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sh',ъ:'',ы:'i',ь:'',э:'e',ю:'yu',я:'ya' };
-// Klinika nomidan havola (slug): lotin, kichik harf, defis.
-export const slugifyClinic = (name = '') => String(name)
-  .toLowerCase()
-  .split('').map((ch) => (CYR[ch] !== undefined ? CYR[ch] : ch)).join('')
-  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  .replace(/[ʻʼ'`‘’]/g, '')
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-+|-+$/g, '')
-  .slice(0, 40);
-const cleanSlugInput = (v = '') => String(v).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-');
+const SIGNUP_ERRORS = {
+  username_taken: "Bu login band",
+  clinic_taken: "Bu klinika nomi band",
+  weak_password: "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+  bad_username: "Login kamida 3 ta belgi bo'lsin: lotin harf, raqam, . _ -",
+  missing_fields: "Iltimos, barcha maydonlarni to'ldiring",
+  bad_clinic_name: "Klinika nomini lotin yoki kirill harflari bilan yozing",
+  google_invalid: "Google sessiyasi tugagan. Qayta Google bilan kiring",
+  session_unavailable: "Sessiya ochilmadi. Qayta urinib ko'ring",
+  too_many_requests: "Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring",
+};
+
 const formatUzPhone = (raw = '') => {
   let d = String(raw).replace(/\D/g, '');
   if (d.length <= 3 && '998'.startsWith(d)) return '+998';
@@ -40,6 +42,17 @@ const formatUzPhone = (raw = '') => {
   return '+998' + (parts.length ? ' ' + parts.join(' ') : '');
 };
 const uzPhoneDigits = (v = '') => String(v).replace(/\D/g, '').replace(/^998/, '');
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/>
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/>
+      <path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.2-3.5 5.7-6.6 7.2l6.3 5.3C37.4 38.4 44 34 44 24c0-1.2-.1-2.3-.4-3.5z"/>
+    </svg>
+  );
+}
 
 export default function Register() {
   const navigate = useNavigate();
@@ -58,18 +71,21 @@ export default function Register() {
   const [step, setStep] = useState('form'); // 'form' | 'card'
   const [bindMode, setBindMode] = useState('live'); // live | mock | local-mock
   const [cardError, setCardError] = useState('');
-  const createdClinicRef = useRef(null); // klinika yaratilgan bo'lsa (attach xatosida qayta yaratmaslik uchun)
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [googleToken, setGoogleToken] = useState('');
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const createdClinicRef = useRef(null);
+  const sessionRef = useRef(null);
   
   // Registration Forms
   const [adminForm, setAdminForm] = useState({
+    fullName: '',
     clinicName: '',
     clinicId: '',
     phone: '+998',
     username: '',
     password: ''
   });
-  const [slugEdited, setSlugEdited] = useState(false);
-
   const [doctorForm, setDoctorForm] = useState({
     clinicId: '',
     fullName: '',
@@ -80,80 +96,164 @@ export default function Register() {
     commission: 30
   });
 
-  const buildClinicPayload = (clinicId, provider) => normalizeClinicBilling({
-    id: clinicId,
-    name: adminForm.clinicName,
-    // clinics.password ustuni NOT NULL (super-admin formasi bilan bir xil)
-    password: adminForm.password,
-    plan: selectedPlan.id,
-    subscription_status: 'trialing',
-    signup_source: fromLanding ? 'landing' : 'manual',
-    phone: formatUzPhone(adminForm.phone),
-    ...(provider ? { payment_provider: provider } : {}),
-  });
-
-  // Klinika yaratilgach: auto-login va CRM (karta bilan ham, kartasiz ham bir xil).
-  const finishRegistration = async (clinicId) => {
-    try {
-      const loginResult = await base44.auth.login(clinicId, adminForm.username, adminForm.password);
-      if (loginResult?.success && loginResult.user) {
-        toast.success(`Klinika ochildi! ${TRIAL_DAYS} kunlik bepul sinov boshlandi.`);
-        if (setAuthData) setAuthData(loginResult.user);
-        setTimeout(() => navigate('/admin/dashboard'), 100);
-        return;
-      }
-    } catch (loginErr) {
-      console.warn('Auto-login after register failed:', loginErr);
+  const openDashboard = async (payload) => {
+    const loginResult = await base44.auth.acceptSession(payload);
+    if (loginResult?.success && loginResult.user) {
+      toast.success(`Klinika ochildi! ${TRIAL_DAYS} kunlik bepul sinov boshlandi.`);
+      if (setAuthData) setAuthData(loginResult.user);
+      setTimeout(() => navigate('/admin/dashboard'), 100);
+      return;
     }
     toast.success('Klinika muvaffaqiyatli ochildi! Endi tizimga kiring.');
     navigate('/login');
   };
 
+  const applySignupError = (data) => {
+    const code = data?.error;
+    if (code === 'username_taken') {
+      setFieldErrors((f) => ({ ...f, username: SIGNUP_ERRORS.username_taken }));
+      setStep('form');
+      return;
+    }
+    if (code === 'clinic_taken') {
+      setFieldErrors((f) => ({ ...f, clinicName: SIGNUP_ERRORS.clinic_taken }));
+      setStep('form');
+      return;
+    }
+    if (code === 'weak_password') {
+      setFieldErrors((f) => ({ ...f, password: SIGNUP_ERRORS.weak_password }));
+      setStep('form');
+      return;
+    }
+    setError(SIGNUP_ERRORS[code] || 'Ro\'yxatdan o\'tish serverda yakunlanmadi. Qayta urinib ko\'ring.');
+  };
+
+  const createClinicOnServer = async () => {
+    if (sessionRef.current?.clinic_id) return sessionRef.current;
+    const phoneDigits = uzPhoneDigits(adminForm.phone);
+    const { status, data } = await crmAuthApi('signup', {
+      body: {
+        owner_name: adminForm.fullName,
+        clinic_name: adminForm.clinicName,
+        username: adminForm.username.trim().toLowerCase(),
+        password: adminForm.password,
+        phone: phoneDigits.length === 9 ? formatUzPhone(adminForm.phone) : '',
+        plan: selectedPlan.id || 'basic',
+        signup_source: googleToken ? 'google' : (fromLanding ? 'landing' : 'manual'),
+        google_access_token: googleToken || undefined,
+      },
+    });
+    if (status === 200 && data?.ok && data.session) {
+      sessionRef.current = data;
+      createdClinicRef.current = data.clinic_id;
+      return data;
+    }
+    applySignupError(data);
+    return null;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const code = searchParams.get('code');
+      try {
+        if (code) {
+          const exchanged = await supabase.auth.exchangeCodeForSession(code);
+          if (exchanged.error) throw exchanged.error;
+          const url = new URL(window.location.href);
+          url.searchParams.delete('code');
+          url.searchParams.delete('state');
+          window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+        }
+        const { data } = await supabase.auth.getSession();
+        const user = data?.session?.user;
+        if (!user || cancelled || user.app_metadata?.crm_user_id) return;
+        const providers = user.app_metadata?.providers || [];
+        const isGoogle = providers.includes('google') || user.app_metadata?.provider === 'google';
+        if (!isGoogle) return;
+        const meta = user.user_metadata || {};
+        const name = String(meta.full_name || meta.name || [meta.given_name, meta.family_name].filter(Boolean).join(' ')).trim();
+        setRole('admin');
+        setGoogleToken(data.session.access_token || '');
+        if (name) setAdminForm((f) => ({ ...f, fullName: f.fullName || name }));
+      } catch {
+        if (!cancelled) setError("Google orqali kirish amalga oshmadi. Qayta urinib ko'ring.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [searchParams]);
+
+  const startGoogle = async () => {
+    setError('');
+    setGoogleBusy(true);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/register`,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    if (oauthError) {
+      setGoogleBusy(false);
+      setError("Google orqali kirish amalga oshmadi. Qayta urinib ko'ring.");
+    }
+  };
+
+  const checkLoginTaken = async (username, clinicName) => {
+    const login = String(username || '').trim().toLowerCase();
+    if (login.length < 3) return;
+    const { status, data } = await crmAuthApi('login-available', {
+      method: 'GET',
+      query: { username: login, clinic_name: clinicName || '' },
+    });
+    if (status === 200 && data?.available === false && data?.reason === 'username_taken') {
+      setFieldErrors((f) => ({ ...f, username: "Bu login band" }));
+    }
+  };
+
   const handleAdminRegister = async (e) => {
     e.preventDefault();
     setError('');
-    if (!adminForm.clinicId || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(adminForm.clinicId)) {
-      const auto = slugifyClinic(adminForm.clinicName) || ('clinic-' + Math.random().toString(36).slice(2, 7));
-      adminForm.clinicId = auto;
+    const clinicId = slugifyClinic(adminForm.clinicName);
+    const next = { ...adminForm, clinicId };
+    setAdminForm(next);
+    const errors = signupFieldErrors({
+      ownerName: next.fullName,
+      clinicName: next.clinicName,
+      username: next.username,
+      password: next.password,
+    });
+    const phoneDigits = uzPhoneDigits(next.phone);
+    if (phoneDigits.length > 0 && phoneDigits.length !== 9) {
+      errors.phone = "Telefon raqamini to'liq kiriting: +998 XX XXX XX XX";
     }
-    
-    if (!adminForm.clinicName || !adminForm.username || !adminForm.password) {
-      setError('Iltimos, barcha maydonlarni to\'ldiring');
-      return;
-    }
-    if (String(adminForm.password).length < 8) {
-      setError("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
-      return;
-    }
-    if (uzPhoneDigits(adminForm.phone).length !== 9) {
-      setError("Telefon raqamini to'liq kiriting: +998 XX XXX XX XX");
-      return;
-    }
-    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(adminForm.clinicId)) {
-      setError("Klinika manzili faqat lotin harflari, raqam va defisdan iborat bo'lsin");
-      return;
-    }
+    if (!clinicId) errors.clinicName = "Klinika nomini lotin yoki kirill harflari bilan yozing";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
 
     setLoading(true);
     try {
-      const clinicId = adminForm.clinicId.toLowerCase();
+      const avail = await crmAuthApi('login-available', {
+        method: 'GET',
+        query: { username: next.username.trim().toLowerCase(), clinic_name: next.clinicName },
+      });
+      if (avail.status === 200 && avail.data?.available === false) {
+        setFieldErrors((f) => ({ ...f, username: "Bu login band" }));
+        return;
+      }
+      if (avail.status === 200 && avail.data?.reason === 'clinic_taken') {
+        setFieldErrors((f) => ({ ...f, clinicName: "Bu klinika nomi band" }));
+        return;
+      }
 
       if (bindingWanted) {
-        // 1-qadam tugadi -> karta qadami. Avval Click holatini aniqlaymiz.
         const status = await getBindingStatus();
         if (status.mode === 'unavailable') {
           setError("Karta tekshiruvi xizmati hozircha mavjud emas. Birozdan so'ng qayta urinib ko'ring.");
           return;
         }
-        // ?card_demo=1 (flag o'chiq) faqat TEST REJIMda ko'rsatiladi: Click haqiqiy ulangan bo'lsa — eski oqim.
         const demoOnly = cardDemo && !CARD_BINDING_REQUIRED;
         if (!(demoOnly && status.mode === 'live')) {
-          const avail = await crmAuthApi('clinic-available', { method: 'GET', query: { id: clinicId } });
-          const existing = avail.status === 200 ? [] : await base44.clinic.getAll();
-          if ((avail.status === 200 && avail.data?.available === false) || existing.find((c) => String(c.id).toLowerCase() === clinicId)) {
-            setError('Ushbu Klinika ID band!');
-            return;
-          }
           setBindMode(status.mode);
           setCardError('');
           setStep('card');
@@ -161,13 +261,8 @@ export default function Register() {
         }
       }
 
-      // 14 kunlik sinov: super-admin "Sinov (14 kun)" bilan bir xil mantiq
-      // (subscription_status=trialing, trial_ends_at va expires_at = bugun + 14 kun). DB sxemasi o'zgarmaydi.
-      await base44.clinic.createClinic(
-        buildClinicPayload(clinicId),
-        { name: 'Admin', username: adminForm.username, password: adminForm.password }
-      );
-      await finishRegistration(clinicId);
+      const created = await createClinicOnServer();
+      if (created) await openDashboard(created);
     } catch (err) {
       setError(err.message || 'Xatolik yuz berdi');
     } finally {
@@ -175,23 +270,18 @@ export default function Register() {
     }
   };
 
-  // Karta tasdiqlangan + rozilik berilgan: klinika yaratiladi, token serverda saqlanadi, CRM'ga kiramiz.
   const handleCardComplete = async ({ proof, consentVersion }) => {
     setCardError('');
     setLoading(true);
-    const clinicId = adminForm.clinicId.toLowerCase();
     try {
+      const clinicId = createdClinicRef.current || slugifyClinic(adminForm.clinicName);
       if (!createdClinicRef.current) {
-        // Klinika faqat karta isboti server tomonda tasdiqlangandan KEYIN yaratiladi.
         await precheckCard(bindMode, { clinicId, proof });
-        await base44.clinic.createClinic(
-          buildClinicPayload(clinicId, bindMode === 'live' ? 'click' : 'mock'),
-          { name: 'Admin', username: adminForm.username, password: adminForm.password }
-        );
-        createdClinicRef.current = clinicId;
+        const created = await createClinicOnServer();
+        if (!created) return;
       }
-      await attachCard(bindMode, { clinicId, proof, consentVersion });
-      await finishRegistration(clinicId);
+      await attachCard(bindMode, { clinicId: createdClinicRef.current, proof, consentVersion });
+      await openDashboard(sessionRef.current);
     } catch (err) {
       setCardError(err.message || 'Xatolik yuz berdi. Qayta urinib ko\'ring');
     } finally {
@@ -237,6 +327,7 @@ export default function Register() {
         clinic_not_found: 'Klinika topilmadi. Klinika ID ni tekshiring',
         clinic_inactive: 'Klinika faol emas',
         subscription_expired: 'Klinika obunasi muddati tugagan',
+        read_only: "Klinika faqat o'qish rejimida. Yangi xodim qo'shib bo'lmaydi",
         bad_username: 'Login faqat lotin harflari, raqam va . _ - belgilaridan iborat bo\'lsin (kamida 3 ta)',
         weak_password: 'Parol kamida 8 ta belgidan iborat bo\'lishi kerak',
         plan_required: 'Shifokor hisobi uchun PRO tarif kerak',
@@ -289,6 +380,16 @@ export default function Register() {
               Tizimda kim sifatida davom etasiz?
             </p>
 
+            <button
+              type="button"
+              onClick={startGoogle}
+              disabled={googleBusy}
+              data-testid="google-signup"
+              className="mb-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-800 shadow-sm"
+            >
+              <GoogleMark />
+              Google bilan ro'yxatdan o'tish
+            </button>
             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={() => setRole('admin')}
@@ -352,6 +453,19 @@ export default function Register() {
               )}
             </AnimatePresence>
 
+            {role === 'admin' && step === 'form' && (
+              <button
+                type="button"
+                onClick={startGoogle}
+                disabled={googleBusy || loading}
+                data-testid="google-signup-form"
+                className="mb-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-800"
+              >
+                <GoogleMark />
+                Google bilan ro'yxatdan o'tish
+              </button>
+            )}
+
             {role === 'admin' && step === 'card' ? (
               <CardBindingStep
                 plan={selectedPlan}
@@ -366,54 +480,84 @@ export default function Register() {
                 onComplete={handleCardComplete}
               />
             ) : role === 'admin' ? (
-              <form onSubmit={handleAdminRegister} className="space-y-3">
+              <form onSubmit={handleAdminRegister} className="space-y-3" autoComplete="off">
                 <div className="space-y-1">
-                  <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Klinika Nomi</Label>
-                  <Input 
-                    placeholder="Masalan: Grand Dental" 
-                    value={adminForm.clinicName}
-                    onChange={e => { const v = e.target.value; setAdminForm(f => ({ ...f, clinicName: v, clinicId: slugEdited ? f.clinicId : slugifyClinic(v) })); }}
-                    className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                  <Label htmlFor="signup-name" className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Ism</Label>
+                  <Input
+                    id="signup-name"
+                    name="signup-name"
+                    autoComplete="name"
+                    placeholder="Ismingiz"
+                    value={adminForm.fullName}
+                    onChange={e => { setFieldErrors((f) => ({ ...f, ownerName: '' })); setAdminForm({ ...adminForm, fullName: e.target.value }); }}
+                    aria-invalid={Boolean(fieldErrors.ownerName)}
+                    className="h-11 sm:h-12 w-full border-none bg-slate-50 rounded-xl font-semibold text-sm"
                   />
+                  {fieldErrors.ownerName && <p className="px-1 text-[11px] font-bold text-rose-600" role="alert">{fieldErrors.ownerName}</p>}
                 </div>
                 <div className="space-y-1">
-                  <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Telefon raqamingiz (yordam uchun)</Label>
-                  <Input 
+                  <Label htmlFor="signup-clinic" className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Klinika nomi</Label>
+                  <Input
+                    id="signup-clinic"
+                    name="signup-clinic"
+                    placeholder="Masalan: Grand Dental"
+                    value={adminForm.clinicName}
+                    onChange={e => { const v = e.target.value; setFieldErrors((f) => ({ ...f, clinicName: '' })); setAdminForm(f => ({ ...f, clinicName: v, clinicId: slugifyClinic(v) })); }}
+                    aria-invalid={Boolean(fieldErrors.clinicName)}
+                    className="h-11 sm:h-12 w-full border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                  />
+                  {fieldErrors.clinicName && <p className="px-1 text-[11px] font-bold text-rose-600" role="alert">{fieldErrors.clinicName}</p>}
+                </div>
+                <div className="space-y-1">
+                  <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Telefon raqamingiz (ixtiyoriy)</Label>
+                  <Input
                     type="tel"
                     inputMode="tel"
-                    required
-                    placeholder="+998 90 123 45 67" 
+                    placeholder="+998 90 123 45 67"
                     value={adminForm.phone}
                     data-testid="register-phone"
-                    onChange={e => setAdminForm({...adminForm, phone: formatUzPhone(e.target.value)})}
-                    className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                    onChange={e => { setFieldErrors((f) => ({ ...f, phone: '' })); setAdminForm({...adminForm, phone: formatUzPhone(e.target.value)}); }}
+                    className="h-11 sm:h-12 w-full border-none bg-slate-50 rounded-xl font-semibold text-sm"
                   />
+                  {fieldErrors.phone && <p className="px-1 text-[11px] font-bold text-rose-600" role="alert">{fieldErrors.phone}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Login</Label>
-                    <Input 
-                      placeholder="admin" 
+                    <Label htmlFor="signup-login" className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Login</Label>
+                    <Input
+                      id="signup-login"
+                      name="signup-login"
+                      autoComplete="new-password"
+                      placeholder="admin"
                       value={adminForm.username}
-                      onChange={e => setAdminForm({...adminForm, username: e.target.value})}
-                      className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                      onChange={e => { setFieldErrors((f) => ({ ...f, username: '' })); setAdminForm({...adminForm, username: e.target.value}); }}
+                      onBlur={() => checkLoginTaken(adminForm.username, adminForm.clinicName)}
+                      aria-invalid={Boolean(fieldErrors.username)}
+                      aria-describedby={fieldErrors.username ? 'signup-login-error' : undefined}
+                      className="h-11 sm:h-12 w-full border-none bg-slate-50 rounded-xl font-semibold text-sm"
                     />
+                    {fieldErrors.username && <p id="signup-login-error" className="px-1 text-[11px] font-bold text-rose-600" role="alert">{fieldErrors.username}</p>}
                   </div>
                   <div className="space-y-1">
-                    <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Parol</Label>
+                    <Label htmlFor="signup-password" className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Parol</Label>
                     <PasswordInput
-                      placeholder="••••••" 
+                      id="signup-password"
+                      name="signup-password"
+                      autoComplete="new-password"
+                      placeholder="Kamida 8 ta belgi"
                       value={adminForm.password}
-                      onChange={e => setAdminForm({...adminForm, password: e.target.value})}
-                      className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                      onChange={e => { setFieldErrors((f) => ({ ...f, password: '' })); setAdminForm({...adminForm, password: e.target.value}); }}
+                      aria-invalid={Boolean(fieldErrors.password)}
+                      className="h-11 sm:h-12 w-full border-none bg-slate-50 rounded-xl font-semibold text-sm"
                     />
+                    {fieldErrors.password && <p className="px-1 text-[11px] font-bold text-rose-600" role="alert">{fieldErrors.password}</p>}
                   </div>
                 </div>
                 <Button
                   disabled={loading}
                   className="w-full h-11 sm:h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest mt-2 text-xs sm:text-sm"
                 >
-                  {loading ? <Loader2 className="animate-spin w-4 h-4" /> : (bindingWanted ? 'Davom etish' : `${TRIAL_DAYS} kun bepul boshlash`)}
+                  {loading ? <Loader2 className="animate-spin w-4 h-4" /> : 'Davom etish'}
                 </Button>
                 {!bindingWanted && (
                   <p className="text-center text-[11.5px] font-medium text-slate-500 leading-snug" data-testid="register-no-card">
@@ -441,7 +585,7 @@ export default function Register() {
                     className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Telefon</Label>
                     <Input 
@@ -461,23 +605,25 @@ export default function Register() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Login</Label>
                     <Input 
-                      placeholder="dr_karim" 
+                      placeholder="dr_karim"
+                      autoComplete="new-password"
                       value={doctorForm.username}
                       onChange={e => setDoctorForm({...doctorForm, username: e.target.value})}
-                      className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                      className="h-11 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
                     />
                   </div>
                   <div className="space-y-1">
                     <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Parol</Label>
                     <PasswordInput
-                      placeholder="••••••" 
+                      placeholder="Kamida 8 ta belgi"
+                      autoComplete="new-password"
                       value={doctorForm.password}
                       onChange={e => setDoctorForm({...doctorForm, password: e.target.value})}
-                      className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                      className="h-11 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
                     />
                   </div>
                 </div>

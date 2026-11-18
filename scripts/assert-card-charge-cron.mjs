@@ -86,14 +86,16 @@ const ok = async () => ({ error_code: 0, error_note: 'Success', payment_id: 555,
   assert.equal(tables.clinics.find((c) => c.id === 'due').expires_at, '2026-12-18');
   assert.ok(tables.subscription_payments.filter((p) => p.clinic_id === 'due' && p.status === 'paid').length === 2);
 }
-// Muvaffaqiyatsiz -> 3 ta ketma-ket xatodan keyin past_due, keyingi kunlarda 3 martagacha qayta urinish
+// Muvaffaqiyatsiz -> darhol past_due + faqat o'qish, keyingi kunlarda 3 martagacha qayta urinish
 {
   const { sb, tables } = fakeDb(seed());
   const fail = async () => ({ error_code: -5017, error_note: 'Not enough funds' });
   let out = await runCharges({ sb, cfg, today: '2026-10-18', pay: fail });
   assert.equal(out.body.failed, 2);
-  assert.equal(decodeExt(tables.clinics.find((c) => c.id === 'due').logo).ext.subscription_status, 'trialing');
-  assert.equal(tables.clinics.find((c) => c.id === 'due').expires_at, '2026-10-18'); // muddat o'zgarmaydi -> mavjud blok ishlaydi
+  const failedExt = decodeExt(tables.clinics.find((c) => c.id === 'due').logo).ext;
+  assert.equal(failedExt.subscription_status, 'past_due');
+  assert.equal(failedExt.access_mode, 'read_only');
+  assert.equal(tables.clinics.find((c) => c.id === 'due').expires_at, '2026-10-18');
   out = await runCharges({ sb, cfg, today: '2026-10-19', pay: fail }); assert.equal(out.body.failed, 2);
   out = await runCharges({ sb, cfg, today: '2026-10-20', pay: fail }); assert.equal(out.body.failed, 2);
   assert.equal(decodeExt(tables.clinics.find((c) => c.id === 'due').logo).ext.subscription_status, 'past_due');
@@ -105,6 +107,9 @@ const ok = async () => ({ error_code: 0, error_note: 'Success', payment_id: 555,
   out = await runCharges({ sb: s2.sb, cfg, today: '2026-10-19', pay: ok });
   assert.equal(out.body.charged, 2);
   assert.equal(s2.tables.clinics.find((c) => c.id === 'due').expires_at, '2026-11-19');
+  const recovered = decodeExt(s2.tables.clinics.find((c) => c.id === 'due').logo).ext;
+  assert.equal(recovered.subscription_status, 'active');
+  assert.equal(recovered.access_mode, undefined);
 }
 // Natija noaniq (tarmoq xatosi) -> 'unknown', hech qachon qayta yechilmaydi
 {

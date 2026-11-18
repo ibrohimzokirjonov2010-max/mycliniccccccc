@@ -12,6 +12,14 @@ export function normalizePlan(plan) {
   return 'pro';
 }
 
+/** Self-serve signup. Empty or unknown values stay on basic, not pro. */
+export function signupPlan(plan) {
+  const p = String(plan || '').toLowerCase();
+  if (p === 'premium' || p === 'klinika') return 'premium';
+  if (p === 'pro') return 'pro';
+  return 'basic';
+}
+
 export function planPrice(plan) {
   return PLAN_PRICES_UZS[normalizePlan(plan)];
 }

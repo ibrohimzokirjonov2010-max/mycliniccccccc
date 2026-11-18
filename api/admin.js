@@ -17,6 +17,7 @@ async function superSession() {
  *   GET  /api/admin?action=me        (Authorization: Bearer <token>)
  *   GET  /api/admin?action=session   (Bearer) -> { session } Supabase sessiyasi (RLS uchun)
  *   GET  /api/admin?action=payments  (Bearer) -> subscription_payments ro'yxati
+ *   GET  /api/admin?action=cards     (Bearer) -> faol kartalar (token yo'q, faqat maska)
  * Env: SUPERADMIN_USERNAME, SUPERADMIN_PASSWORD (majburiy), SUPERADMIN_SESSION_SECRET (tavsiya).
  * Env bo'lmasa login RAD etiladi (503). Parol bundle'da yo'q.
  */
@@ -88,6 +89,22 @@ export default async function handler(req, res) {
       .order('created_at', { ascending: false }).limit(1000);
     if (error) return send(res, 200, { ok: true, payments: [], table_missing: true });
     return send(res, 200, { ok: true, payments: data || [] });
+  }
+  if (action === 'cards') {
+    const sb = supabaseAdmin();
+    if (!sb) return send(res, 503, { ok: false, error: 'server_not_configured' });
+    const { data, error } = await sb.from('clinic_payment_methods')
+      .select('clinic_id,status,masked_pan,consent_at')
+      .eq('status', 'active')
+      .limit(2000);
+    if (error) return send(res, 200, { ok: true, cards: [], table_missing: true });
+    const cards = (data || []).map((row) => ({
+      clinic_id: row.clinic_id,
+      status: row.status,
+      masked_pan: row.masked_pan || '',
+      consent_at: row.consent_at || null,
+    }));
+    return send(res, 200, { ok: true, cards });
   }
   return send(res, 400, { ok: false, error: 'bad_request' });
 }

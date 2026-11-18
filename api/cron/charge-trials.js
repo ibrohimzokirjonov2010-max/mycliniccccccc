@@ -16,7 +16,8 @@ const MAX_ATTEMPTS = 3;
  *  - Faol karta tokeni (clinic_payment_methods.status='active', provider='click') bor klinikalar;
  *  - subscription_status='trialing' va trial_ends_at <= bugun (Asia/Tashkent) -> birinchi yechish;
  *  - faol (to'langan) klinika va expires_at <= bugun -> har oylik yechish;
- *  - muvaffaqiyatsiz bo'lsa ertasi kuni qayta urinish; ketma-ket MAX_ATTEMPTS (3) xatodan keyin 'past_due' va to'xtatiladi;
+ *  - muvaffaqiyatsiz bo'lsa darhol subscription_status='past_due' va access_mode='read_only' (faqat o'qish);
+ *    ertasi kuni qayta urinish, ketma-ket MAX_ATTEMPTS (3) xatodan keyin to'xtatiladi;
  *  - muvaffaqiyat: subscription_status='active', expires_at = bugun + 1 oy, last_payment_date, monthly_fee;
  *  - har bir urinish subscription_payments jadvaliga ham yoziladi (SuperAdmin hisobotlari uchun);
  *  - natija noaniq (tarmoq xatosi): 'unknown' — qayta YECHILMAYDI (ikki marta yechish xavfi), qo'lda tekshiriladi.
@@ -60,9 +61,11 @@ export async function runCharges({ sb, cfg, pay, today }) {
 
       const status = ext.subscription_status || 'active';
       const expiry = String(clinic.expires_at || '').slice(0, 10);
-      const trialDue = status === 'trialing' && ext.trial_ends_at && ext.trial_ends_at <= today;
+      const trialDate = String(ext.trial_ends_at || '').slice(0, 10);
+      const trialDue = status === 'trialing' && trialDate && trialDate <= today;
       const renewDue = status !== 'trialing' && status !== 'past_due' && status !== 'expired' && Boolean(expiry) && expiry <= today;
-      if (!(trialDue || renewDue) || failedCount >= MAX_ATTEMPTS || hasUnknown || alreadyToday) { summary.skipped += 1; continue; }
+      const retryDue = status === 'past_due' && ((trialDate && trialDate <= today) || (Boolean(expiry) && expiry <= today));
+      if (!(trialDue || renewDue || retryDue) || failedCount >= MAX_ATTEMPTS || hasUnknown || alreadyToday) { summary.skipped += 1; continue; }
 
       const amount = planPrice(ext.tariff || clinic.plan);
       const attemptNo = failedCount + 1;
@@ -111,14 +114,18 @@ export async function runCharges({ sb, cfg, pay, today }) {
 
       if (ok) {
         const newExpiry = addMonths(today, 1);
-        const nextExt = { ...ext, subscription_status: 'active', billing_status: 'paid', charge_failures: 0, payment_provider: 'click', period_ends_at: newExpiry, payment_ledger: ledger.slice(-50) };
+        const nextExt = { ...ext, subscription_status: 'active', access_mode: '', billing_status: 'paid', charge_failures: 0, payment_provider: 'click', period_ends_at: newExpiry, payment_ledger: ledger.slice(-50) };
         await sb.from('clinics').update({ logo: encodeExt(nextExt, rawLogo), expires_at: newExpiry, last_payment_date: today, monthly_fee: amount }).eq('id', clinic.id);
         summary.charged += 1;
       } else {
         const failures = failedCount + 1;
         const nextExt = {
-          ...ext, billing_status: 'failed', charge_failures: failures, payment_ledger: ledger.slice(-50),
-          ...(failures >= MAX_ATTEMPTS ? { subscription_status: 'past_due' } : {}),
+          ...ext,
+          billing_status: 'failed',
+          charge_failures: failures,
+          payment_ledger: ledger.slice(-50),
+          subscription_status: 'past_due',
+          access_mode: 'read_only',
         };
         await sb.from('clinics').update({ logo: encodeExt(nextExt, rawLogo) }).eq('id', clinic.id);
         summary.failed += 1;

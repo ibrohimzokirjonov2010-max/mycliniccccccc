@@ -9,6 +9,7 @@ import NativeMobileLayout from './NativeMobileLayout';
 import AdBanner from './AdBanner';
 import SubscriptionBlockedView from './SubscriptionBlockedView';
 import TariffReminder from './TariffReminder';
+import PastDueBanner from './PastDueBanner';
 import ErrorBoundary from './ErrorBoundary';
 import { clinicAccessClosed, invalidateClinicExpiry, loadClinicAccess } from '@/lib/clinicExpiry';
 import { Suspense, memo } from 'react';
@@ -233,6 +234,7 @@ export default function AppLayout() {
   if (isMobile) {
     return (
       <NativeMobileLayout>
+        <PastDueBanner clinic={clinic} />
         <TariffReminder clinic={clinic} />
         {hold ? null : <GuardedOutlet />}
         <QuickPatientModal />
@@ -261,6 +263,7 @@ export default function AppLayout() {
         {/* Page Content with Framer Motion Transitions */}
         <main ref={mainRef} className="flex-1 overflow-y-auto px-5 py-3 pb-6 relative no-scrollbar">
           <div className="max-w-[1600px] mx-auto w-full">
+            <PastDueBanner clinic={clinic} />
             <TariffReminder clinic={clinic} />
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
