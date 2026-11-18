@@ -28,6 +28,13 @@ export function monthsFor(clinic, amountUzs) {
   return Number.isInteger(n) && n >= 1 && n <= MAX_MONTHS ? n : 0;
 }
 
+/** Kartadan yechish muvaffaqiyatsiz: kirish ochiq, yozish yopiq. */
+export function isReadOnlyClinic(clinic) {
+  if (!clinic) return false;
+  const ext = clinic.ext || decodeExt(clinic.logo).ext || {};
+  return ext.subscription_status === 'past_due' || ext.access_mode === 'read_only';
+}
+
 /** Muddat tugagan yoki klinika nofaolmi (server tomonida bloklash uchun). */
 export function clinicExpired(clinic, today = tashkentToday()) {
   if (!clinic) return true;

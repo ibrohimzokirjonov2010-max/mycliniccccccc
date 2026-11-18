@@ -197,7 +197,7 @@ export default function CardBindingStep({ plan, mode, trialDays, submitting, sub
           className="mt-0.5 h-4 w-4 shrink-0 accent-teal-600" data-testid="consent-checkbox"
         />
         <span className="text-[12px] font-semibold leading-snug text-slate-700">
-          {consentText({ amountText: formatSoom(plan.priceUzs), dateText: formatDate(firstCharge), trialDays })}.{' '}
+          {consentText({ amountText: formatSoom(plan.priceUzs), planName: plan.name, dateText: formatDate(firstCharge), trialDays })}{' '}
           <Link to={LEGAL_LINKS.offer} target="_blank" className="font-bold text-teal-700 underline">Oferta</Link>
           {' · '}
           <Link to={LEGAL_LINKS.privacy} target="_blank" className="font-bold text-teal-700 underline">Maxfiylik siyosati</Link>
@@ -208,7 +208,7 @@ export default function CardBindingStep({ plan, mode, trialDays, submitting, sub
         type="button" disabled={!canContinue} onClick={() => onComplete({ proof, consentVersion: CONSENT_VERSION, maskedPan })}
         className={`h-12 w-full rounded-xl text-xs font-black uppercase tracking-widest text-white disabled:opacity-40 ${NAVY}`} data-testid="finish-button"
       >
-        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "CRM'ga kirish"}
+        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Davom etish'}
       </Button>
 
       <button type="button" onClick={onBack} disabled={submitting} className="mx-auto flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-teal-600">

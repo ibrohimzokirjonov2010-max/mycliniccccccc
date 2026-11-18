@@ -5,14 +5,17 @@ import { decodeExt, encodeExt } from './_lib/clinicExt.js';
 import { accessPlan, normalizePlan, planAllows, planPrice } from './_lib/plans.js';
 import { botToken } from './_lib/telegram.js';
 import { bodyOf, guard, send } from './_lib/http.js';
-import { clinicExpired } from './_lib/payments.js';
+import { clinicExpired, isReadOnlyClinic } from './_lib/payments.js';
 import { mintSession } from './_lib/crmSession.js';
+import { loginAvailable, signupClinic } from './_lib/signup.js';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 
 /**
  * Klinika foydalanuvchilari uchun server auth + RLS yoqilganda kerak bo'ladigan ochiq (public) amallar.
  *   POST /api/auth?action=login     { clinic_id, username, password } -> { user, clinic, session }
  *   POST /api/auth?action=register  { clinic, admin:{ username, password, name } } -> { clinic_id }
+ *   POST /api/auth?action=signup    { owner_name, clinic_name, username, password, plan? } -> { user, clinic, session }
+ *   GET  /api/auth?action=login-available&clinic_name=&username= -> { available }
  *   GET  /api/auth?action=clinic-available&id=..       -> { available }
  *   POST /api/auth?action=doctor-register { clinic_id, name, username, password, phone, specialty, commission_rate }
  *   POST /api/auth?action=handoff { token } -> landing token server tomonda tekshiriladi -> { user, clinic, session }
@@ -28,7 +31,7 @@ const PRIVATE_EXT = new Set(['api_key', 'license_key', 'payme_merchant_id', 'cli
   'payment_provider', 'billing_cycle']);
 const TRIAL_DAYS = 14; // src/config/landingPricing.js bilan bir xil
 const BILLING_EXT = new Set(['tariff', 'subscription_status', 'trial_ends_at', 'payment_ledger', 'pending_order', 'billing_status',
-  'billing_cycle', 'payment_provider', 'charge_failures', 'card_token', 'masked_pan', 'payment_method_id', 'period_ends_at',
+  'billing_cycle', 'payment_provider', 'charge_failures', 'card_token', 'masked_pan', 'payment_method_id', 'period_ends_at', 'access_mode',
   'first_charge_date', 'last_payment_date', 'expires_at', 'monthly_fee', 'plan', 'status', 'api_key', 'license_key']);
 const CLINIC_COLS = ['id', 'name', 'password', 'status', 'created_at', 'expires_at', 'monthly_fee', 'last_payment_date', 'plan', 'logo'];
 
@@ -134,7 +137,7 @@ async function login(sb, body) {
   const { data: clinic } = await sb.from('clinics').select(CLINIC_COLS.join(',')).ilike('id', likeId(user.clinic_id)).limit(1).maybeSingle();
   if (!clinic) return [404, { ok: false, error: 'clinic_not_found' }];
   if (clinic.status !== 'Active') return [403, { ok: false, error: 'clinic_inactive' }];
-  if (clinicExpired(clinic)) return [402, { ok: false, error: 'subscription_expired' }];
+  if (clinicExpired(clinic) && !isReadOnlyClinic(clinic)) return [402, { ok: false, error: 'subscription_expired' }];
 
   const session = await mintSession(sb, { key: `user:${user.id}`, clinicId: clinic.id, role: String(user.role || 'staff'), userId: user.id });
   return [200, { ok: true, user: sanitizeUser(user), clinic: safeClinic(clinic, { full: true }), session }];
@@ -256,7 +259,7 @@ async function doctorRegister(sb, b) {
   const { data: clinic } = await sb.from('clinics').select('id,name,status,expires_at,plan,logo').ilike('id', likeId(clinicId)).limit(1).maybeSingle();
   if (!clinic) return [404, { ok: false, error: 'clinic_not_found' }];
   if (clinic.status !== 'Active') return [403, { ok: false, error: 'clinic_inactive' }];
-  if (clinicExpired(clinic)) return [402, { ok: false, error: 'subscription_expired' }];
+  if (clinicExpired(clinic) || isReadOnlyClinic(clinic)) return [402, { ok: false, error: isReadOnlyClinic(clinic) ? 'read_only' : 'subscription_expired' }];
   if (!planAllows(accessPlan(clinic), 'doctor_accounts')) return [403, { ok: false, error: 'plan_required' }];
   const { data: staff, error: se } = await sb.from('users').select('id,username').eq('clinic_id', clinic.id).limit(2000);
   if (se) return [500, { ok: false, error: 'db_error' }];
@@ -301,7 +304,7 @@ async function handoff(sb, b) {
   const { data: clinic } = await sb.from('clinics').select(CLINIC_COLS.join(',')).ilike('id', likeId(user.clinic_id)).limit(1).maybeSingle();
   if (!clinic) return [404, { ok: false, error: 'clinic_not_found' }];
   if (clinic.status !== 'Active') return [403, { ok: false, error: 'clinic_inactive' }];
-  if (clinicExpired(clinic)) return [402, { ok: false, error: 'subscription_expired' }];
+  if (clinicExpired(clinic) && !isReadOnlyClinic(clinic)) return [402, { ok: false, error: 'subscription_expired' }];
   const session = await mintSession(sb, { key: `user:${user.id}`, clinicId: clinic.id, role: String(user.role || 'staff'), userId: user.id });
   return [200, { ok: true, user: sanitizeUser(user), clinic: safeClinic(clinic, { full: true }), session }];
 }
@@ -375,9 +378,18 @@ async function writeUserRow(sb, record, existingId) {
   return { code: 'db_error' };
 }
 
+async function ensureWritable(sb, actor) {
+  if (!actor || actor.platform) return null;
+  const { data: clinic } = await sb.from('clinics').select('id,logo,status,expires_at').eq('id', actor.clinicId).maybeSingle();
+  if (clinic && isReadOnlyClinic(clinic)) return [423, { ok: false, error: 'read_only' }];
+  return null;
+}
+
 async function changePassword(sb, req, body) {
   const actor = await actorFrom(req, sb);
   if (!actor) return [401, { ok: false, error: 'unauthorized' }];
+  const locked = await ensureWritable(sb, actor);
+  if (locked) return locked;
   const password = String(body.password || '');
   if (passwordError(password)) return [400, { ok: false, error: 'weak_password' }];
   const userId = str(body.user_id || actor.userId, 80);
@@ -395,6 +407,8 @@ async function changePassword(sb, req, body) {
 async function saveStaff(sb, req, body) {
   const actor = await actorFrom(req, sb);
   if (!actor) return [401, { ok: false, error: 'unauthorized' }];
+  const locked = await ensureWritable(sb, actor);
+  if (locked) return locked;
   if (!canManageStaff(actor)) return [403, { ok: false, error: 'forbidden' }];
   const input = body.user && typeof body.user === 'object' ? body.user : body;
   const clinicId = actor.platform ? str(input.clinic_id || actor.clinicId, 80) : actor.clinicId;
@@ -451,15 +465,17 @@ async function saveStaff(sb, req, body) {
 
 export default async function handler(req, res) {
   const action = String(req.query?.action || '');
-  const isGet = ['clinic-available', 'public-clinic', 'public-slots'].includes(action);
-  const limits = { login: 20, register: 5, 'public-book': 10, 'doctor-register': 5, handoff: 20, 'save-staff': 30, 'change-password': 10 };
+  const isGet = ['clinic-available', 'login-available', 'public-clinic', 'public-slots'].includes(action);
+  const limits = { login: 20, register: 5, signup: 5, 'login-available': 30, 'public-book': 10, 'doctor-register': 5, handoff: 20, 'save-staff': 30, 'change-password': 10 };
   if (!guard(req, res, { method: isGet ? 'GET' : 'POST', limit: limits[action] || 0 })) return;
   const sb = supabaseAdmin();
   if (!sb) return send(res, 503, { ok: false, error: 'server_not_configured' });
   try {
     let out;
     if (action === 'login') out = await login(sb, bodyOf(req));
+    else if (action === 'signup') out = await signupClinic(sb, bodyOf(req));
     else if (action === 'register') out = await register(sb, bodyOf(req));
+    else if (action === 'login-available') out = await loginAvailable(sb, req.query || {});
     else if (action === 'public-clinic') out = await publicClinic(sb, req.query || {});
     else if (action === 'public-slots') out = await publicSlots(sb, req.query || {});
     else if (action === 'public-book') out = await publicBook(sb, bodyOf(req));

@@ -369,7 +369,21 @@ export default function SuperAdmin() {
       if (hasChanges) {
         await base44.clinic.saveAll(fixedData);
       }
-      setClinics(fixedData);
+      let cards = [];
+      try {
+        const cardRes = await adminApi('cards');
+        const cardBody = await cardRes.json().catch(() => ({}));
+        if (cardRes.ok && Array.isArray(cardBody.cards)) cards = cardBody.cards;
+      } catch { /* karta jadvali yo'q bo'lsa ham ro'yxat ochiladi */ }
+      const cardByClinic = new Map(cards.map((card) => [String(card.clinic_id), card]));
+      setClinics(fixedData.map((clinic) => {
+        const card = cardByClinic.get(String(clinic.id));
+        return {
+          ...clinic,
+          card_status: card ? 'linked' : 'missing',
+          card_masked: card?.masked_pan || '',
+        };
+      }));
       const mergedLedger = mergeLedgers(fixedData, readLedger());
       writeLedger(mergedLedger);
       setLedger(mergedLedger);
@@ -1614,6 +1628,9 @@ export default function SuperAdmin() {
                                   <p className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[240px]">
                                     {(c.owner_email || c.email) || 'Email yo\'q'} · {(c.owner_phone || c.phone) || 'Tel yo\'q'} · {SOURCE_LABELS[c.signup_source] || (c.tariff ? 'Landing' : 'Qo\'lda')}
                                   </p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5" data-testid="clinic-trial-card">
+                                    Sinov tugashi: {c.trial_ends_at || '—'} · Karta: {c.card_status === 'linked' ? `Biriktirilgan${c.card_masked ? ` · ${c.card_masked}` : ''}` : 'Biriktirilmagan'}
+                                  </p>
                                 </div>
                               </div>
                             </td>
@@ -2327,6 +2344,7 @@ export default function SuperAdmin() {
                 <Label className="text-[10px] font-bold text-slate-400 uppercase">Ro'yxat manbai</Label>
                 <select value={form.signup_source || 'manual'} onChange={e => setForm({...form, signup_source: e.target.value})} className={SELECT}>
                   <option value="manual" className="bg-slate-900">Qo'lda</option>
+                  <option value="google" className="bg-slate-900">Google</option>
                   <option value="landing" className="bg-slate-900">Landing</option>
                   <option value="telegram" className="bg-slate-900">Telegram</option>
                   <option value="referral" className="bg-slate-900">Tavsiya</option>
@@ -2756,6 +2774,7 @@ export default function SuperAdmin() {
                     <span className="text-slate-400 text-[10px] block">Egasi</span>
                     <strong className="text-white text-xs">{selectedClinicForDetail.doctor_name || selectedClinicForDetail.owner_email || selectedClinicForDetail.email || '—'}</strong>
                     <span className="block text-[10px] text-slate-500">{selectedClinicForDetail.owner_email || selectedClinicForDetail.email || ''} · {selectedClinicForDetail.owner_phone || selectedClinicForDetail.phone || ''} · {SOURCE_LABELS[selectedClinicForDetail.signup_source] || (selectedClinicForDetail.tariff ? 'Landing' : 'Qo\'lda')}</span>
+                    <span className="block text-[10px] text-slate-400 mt-1">Sinov tugashi: {selectedClinicForDetail.trial_ends_at || '—'} · Karta: {selectedClinicForDetail.card_status === 'linked' ? `Biriktirilgan${selectedClinicForDetail.card_masked ? ` · ${selectedClinicForDetail.card_masked}` : ''}` : 'Biriktirilmagan'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] block">Provayder</span>

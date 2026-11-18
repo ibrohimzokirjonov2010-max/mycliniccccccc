@@ -66,6 +66,7 @@ export const WEBHOOK_LABELS = {
 
 export const SOURCE_LABELS = {
   manual: 'Qo\'lda',
+  google: 'Google',
   landing: 'Landing',
   telegram: 'Telegram',
   referral: 'Tavsiya',

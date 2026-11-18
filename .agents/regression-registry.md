@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🔐 O'z-o'ziga ro'yxat va sinov yechimi
+- **Sana:** 2026-11-18
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Register.jsx`](src/pages/Register.jsx)
+  - [`api/_lib/signup.js`](api/_lib/signup.js)
+  - [`api/cron/charge-trials.js`](api/cron/charge-trials.js)
+  - [`docs/SELF_SERVE_SIGNUP.md`](docs/SELF_SERVE_SIGNUP.md)
+- **Muammo Tavsifi:** Klinika ro'yxati egasining ismini so'ramasdi va Google bilan ochilmasdi. Sinov tugagach kartadan pul yechilmasa klinika yozishda qolaverardi.
+- **Sababi:** Ro'yxat `Admin` nomini o'zi qo'yardigan. Yechish xatosi 3 urinishgacha `trialing` qolardi.
+- **Qanday tuzatildi:** `/api/auth?action=signup` klinika va adminni serverda yaratadi, sessiya qaytaradi. Birinchi muvaffaqiyatsiz yechish `past_due` va faqat o'qish. Banner o'zbekcha.
+- **Qaytalamaslik choralari:** Klinikani brauzerdan `clinics` ga yozmang. Ikkinchi Click integratsiyasi yozmang. `past_due` ni yana 3-xatogacha kechiktirmang. `card_token` ni klientga qaytarmang. `node scripts/assert-self-serve-signup.mjs` va `node scripts/assert-card-charge-cron.mjs` o'tsin. `patient-y2ii8ynf2` ga yozmang.
+
 ### 🔐 Phase 1 — parol va demo ma'lumot serverda
 - **Sana:** 2026-11-18
 - **Tuzatilgan Fayllar:**

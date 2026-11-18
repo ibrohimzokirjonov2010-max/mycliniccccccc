@@ -14,7 +14,7 @@ import {
   readClinicPlan,
   resolveClinicPlan,
 } from '@/lib/clinicPlan';
-import { assertClinicNotExpired, isClinicExpired } from '@/lib/clinicExpiry';
+import { assertClinicNotExpired, clinicReadOnly, isClinicExpired, loadClinicAccess } from '@/lib/clinicExpiry';
 
 export { PLAN_FEATURES };
 
@@ -207,6 +207,18 @@ class HybridEntityLoader {
       return;
     }
     enforceFeature(feature);
+  }
+
+  async _checkWritable() {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem('is_super_admin') === 'true') return;
+    const id = this._getClinicId();
+    if (!id || id === 'default_clinic') return;
+    const { clinic } = await loadClinicAccess(id);
+    if (!clinicReadOnly(clinic)) return;
+    const denied = new Error("To'lov yechilmadi. Klinika faqat o'qish rejimida — yangi yozuv qo'shib bo'lmaydi.");
+    denied.code = 423;
+    throw denied;
   }
 
   _techFields() {
@@ -886,6 +898,7 @@ class HybridEntityLoader {
 
   async create(payload) {
     await this._checkAccess();
+    await this._checkWritable();
     if (this.entityName === 'User' && payload?.password) {
       const encoded = this._encodeNotes({ ...payload, clinic_id: payload.clinic_id || this._getClinicId() });
       const { status, data } = await crmAuthApi('save-staff', { auth: true, body: { user: encoded } });
@@ -1075,7 +1088,7 @@ class HybridEntityLoader {
 
         return this._enrich([enrichedRecord])[0] || enrichedRecord;
       } catch (error) {
-        if (error?.code === 402) throw error;
+        if (error?.code === 402 || error?.code === 423) throw error;
         console.error(`Error creating ${this.entityName}:`, error);
 
         const badCol = missingColumnFromError(error);
@@ -1121,6 +1134,7 @@ class HybridEntityLoader {
 
   async update(id, payload) {
     await this._checkAccess();
+    await this._checkWritable();
     if (this.entityName === 'User' && payload?.password) {
       const { status, data } = await crmAuthApi('change-password', {
         auth: true,
@@ -1131,6 +1145,7 @@ class HybridEntityLoader {
           weak_password: "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
           forbidden: "Bu parolni o'zgartirish uchun ruxsat yo'q",
           unauthorized: 'Sessiya tugagan. Qayta kiring',
+          read_only: "Klinika faqat o'qish rejimida. O'zgartirish mumkin emas.",
         };
         throw new Error(known[data?.error] || 'Parol saqlanmadi');
       }
@@ -1301,7 +1316,7 @@ class HybridEntityLoader {
       }
       throw new Error(`All retries failed for ${this.entityName} update`);
     } catch (error) {
-      if (error?.code === 402 || this.entityName === 'Implant') throw error;
+      if (error?.code === 402 || error?.code === 423 || this.entityName === 'Implant') throw error;
       const fallbackRes = this._localStorageUpdate(id, incoming);
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
       return this.entityName === 'User' ? sanitizeUser(fallbackRes) : fallbackRes;
@@ -1310,6 +1325,7 @@ class HybridEntityLoader {
 
   async delete(id) {
     await this._checkAccess();
+    await this._checkWritable();
     RequestCache.invalidate(this.entityName);
     if (this.entityName === 'Case') {
       if (!this.useSupabase) {
@@ -1349,7 +1365,7 @@ class HybridEntityLoader {
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
       return result;
     } catch (error) {
-      if (error?.code === 402) throw error;
+      if (error?.code === 402 || error?.code === 423) throw error;
       console.error(`Error deleting ${this.entityName}:`, error);
       if (error.code === '23503' || (error.message && error.message.includes('Bog\'langan'))) {
         throw error;
@@ -2021,7 +2037,7 @@ export const base44 = {
       'email', 'doctor_name', 'payment_method', 'tariff', 'billing_status',
       'subscription_status', 'trial_ends_at', 'period_ends_at', 'access_unlocked',
       'license_key',
-      'owner_email', 'owner_phone', 'signup_source',
+      'owner_email', 'owner_phone', 'signup_source', 'access_mode',
       'payme_merchant_id', 'click_service_id', 'click_merchant_id',
       'webhook_status', 'last_webhook_at', 'payment_provider',
       'payment_ledger', 'billing_cycle', 'pending_order',
@@ -2584,7 +2600,7 @@ export const base44 = {
         return { success: false, error: 'Klinika faol emas. Admin bilan bog\'laning!' };
       }
 
-      if (isClinicExpired(clinic.expires_at)) {
+      if (isClinicExpired(clinic.expires_at) && !clinicReadOnly(clinic)) {
         return { success: false, error: 'Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!' };
       }
       
@@ -2613,6 +2629,55 @@ export const base44 = {
           role: user.role, 
           clinic_id: user.clinic_id 
         } 
+      };
+    },
+
+    acceptSession: async ({ user, clinic, session }) => {
+      if (!user?.id || !clinic || !session?.access_token) {
+        return { success: false, error: "Sessiya ochilmadi. Qayta urinib ko'ring." };
+      }
+      try { localStorage.setItem('crm_remember', '1'); } catch { /* ignore */ }
+      const sessionOk = await applyServerSession(session);
+      if (!sessionOk) {
+        await clearServerSession();
+        return { success: false, error: "Sessiya ochilmadi. Qayta urinib ko'ring." };
+      }
+      localStorage.setItem('crm_auth_mode', 'server');
+      const decoded = base44.clinic._decodeClinicNotes(clinic);
+      if (decoded?.status && decoded.status !== 'Active') {
+        return { success: false, error: 'Klinika faol emas. Admin bilan bog\'laning!' };
+      }
+      if (isClinicExpired(decoded?.expires_at) && !clinicReadOnly(decoded)) {
+        return { success: false, error: 'Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!' };
+      }
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('clinic_settings');
+      const clinicPlan = applyClinicSession(decoded || clinic);
+      const safeUser = sanitizeUser(user);
+      localStorage.setItem('is_authenticated', 'true');
+      localStorage.setItem('user_id', user.id);
+      localStorage.setItem('user_name', user.name || '');
+      localStorage.setItem('user_role', user.role || 'admin');
+      localStorage.setItem('clinic_id', user.clinic_id);
+      localStorage.setItem('current_clinic_id', user.clinic_id);
+      localStorage.setItem('clinic_plan', clinicPlan);
+      localStorage.setItem('user_data', JSON.stringify(safeUser));
+      try {
+        const { password: _pw, ...safeClinic } = decoded || {};
+        const local = JSON.parse(localStorage.getItem('system_clinics') || '[]');
+        if (!local.some((c) => c.id === safeClinic.id)) local.push(safeClinic);
+        localStorage.setItem('system_clinics', JSON.stringify(local));
+      } catch { /* ignore */ }
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          clinic_id: user.clinic_id,
+        },
       };
     },
 

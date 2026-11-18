@@ -3,7 +3,7 @@
 ## Oqim
 1. `/register` (Klinika Admin): ma'lumotlar → **Davom etish**.
 2. "14 kunlik bepul sinov uchun kartangizni kiriting": karta raqami + amal qilish muddati → Click SMS-kod → tasdiqlash.
-3. Pastda majburiy checkbox (rozilik + oferta / maxfiylik havolalari). Belgilanmaguncha va karta tasdiqlanmaguncha **CRM'ga kirish** tugmasi nofaol.
+3. Pastda majburiy checkbox: «14 kunlik bepul sinovdan keyin kartangizdan tarif narxi avtomatik yechiladi» va tarif narxi. Belgilanmaguncha va karta tasdiqlanmaguncha **Davom etish** nofaol. Google va serverdagi ro'yxat: `docs/SELF_SERVE_SIGNUP.md`.
 4. Tugma bosilganda: klinika yaratiladi (14 kun trial, mavjud mantiq) → `POST /api/card/attach` token'ni DB'ga yozadi → CRM.
 5. Sinov tugagan kuni (cron) tarif narxi token bilan yechiladi.
 

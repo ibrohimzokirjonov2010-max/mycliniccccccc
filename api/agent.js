@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { send, bodyOf } from './_lib/http.js';
 import { decodeExt } from './_lib/clinicExt.js';
+import { isReadOnlyClinic } from './_lib/payments.js';
 import { botToken } from './_lib/telegram.js';
 
 const TZ_OFFSET_MIN = 5 * 60; // Asia/Tashkent, DST yo'q
@@ -379,8 +380,13 @@ export default async function handler(req, res) {
     if (!db) return err(res, 503, 'not_configured', 'DB sozlanmagan');
     const clinic = await loadClinic(db, cid);
     if (!clinic) return err(res, 503, 'not_configured', 'Klinika topilmadi');
-    if (String(clinic.status || 'Active') !== 'Active' || (clinic.expires_at && dayOf(clinic.expires_at) < tashkentNow().date)) {
+    const readOnly = isReadOnlyClinic(clinic);
+    const dateExpired = clinic.expires_at && dayOf(clinic.expires_at) < tashkentNow().date;
+    if (String(clinic.status || 'Active') !== 'Active' || (dateExpired && !readOnly)) {
       return err(res, 402, 'subscription_expired', 'Obuna muddati tugagan yoki klinika faol emas');
+    }
+    if (readOnly && req.method !== 'GET') {
+      return err(res, 423, 'read_only', "Obuna to'lovi yechilmadi. Klinika faqat o'qish rejimida.");
     }
 
     const isGet = req.method === 'GET';
