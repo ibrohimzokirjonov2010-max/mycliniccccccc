@@ -401,6 +401,7 @@ export function normalizeClinicBilling(form, now = new Date()) {
   if (life === 'active') {
     next.subscription_status = 'active';
     if (next.status !== 'Inactive') next.status = 'Active';
+    if (!String(next.trial_ends_at || '').trim()) delete next.trial_ends_at;
   }
 
   if (life === 'past_due') next.subscription_status = 'past_due';
@@ -416,4 +417,112 @@ export function normalizeClinicBilling(form, now = new Date()) {
     next.payment_provider = ['manual', 'payme', 'click', 'mock'].includes(method) ? method : 'manual';
   }
   return next;
+}
+
+/** Custom monthly price when one is set, otherwise the catalog price for the plan. */
+export function monthlyPrice(clinic) {
+  return displayMonthlyFee(clinic);
+}
+
+/** Paid subscription still inside its term: active or expiring, never a free trial. */
+export function isPaidSubscription(clinic, now = new Date()) {
+  const life = resolveLifecycle(clinic, now);
+  if (life.trial || life.key === 'trialing' || life.key === 'past_due' || life.key === 'expired') return false;
+  return life.key === 'active' || life.key === 'expiring';
+}
+
+export function subscriptionHeadline(clinics, now = new Date()) {
+  const rows = clinics || [];
+  const paid = rows.filter((clinic) => isPaidSubscription(clinic, now));
+  return {
+    paid: paid.length,
+    total: rows.length,
+    mrr: paid.reduce((sum, clinic) => sum + monthlyPrice(clinic), 0),
+  };
+}
+
+function clinicName(clinics, id) {
+  const row = (clinics || []).find((clinic) => clinic.id === id);
+  return row?.name || id || '';
+}
+
+function providerMethod(provider) {
+  const value = String(provider || '').toLowerCase();
+  if (value.includes('payme')) return 'payme';
+  if (value.includes('click')) return 'click';
+  if (value === 'mock' || value === 'trial' || value === 'manual') return value;
+  return 'manual';
+}
+
+/** subscription_payments + clinic_payment_charges → ledger rows. Charges already copied into a payment are skipped. */
+export function serverRowsToLedger(payments = [], charges = [], clinics = []) {
+  const seen = new Set();
+  const rows = [];
+  for (const payment of payments || []) {
+    const txn = payment?.provider_txn_id ? String(payment.provider_txn_id) : '';
+    if (txn) seen.add(txn);
+    const date = String(payment?.paid_at || payment?.created_at || '').slice(0, 10);
+    const amount = Number(payment?.amount) || 0;
+    rows.push({
+      id: `sp_${payment.id}`,
+      clinic_id: payment.clinic_id || '',
+      clinic_name: clinicName(clinics, payment.clinic_id),
+      date,
+      paidAt: date,
+      amount,
+      amountUzs: amount,
+      method: providerMethod(payment.provider),
+      status: payment.status === 'paid' ? 'paid' : (payment.status || 'pending'),
+      orderId: txn || null,
+      note: payment.note || '',
+      created_at: payment.created_at || payment.paid_at || date,
+    });
+  }
+  for (const charge of charges || []) {
+    const txn = String(charge?.click_payment_id || charge?.transaction_parameter || '');
+    if (txn && seen.has(txn)) continue;
+    const date = String(charge?.attempt_date || charge?.created_at || '').slice(0, 10);
+    const amount = Number(charge?.amount) || 0;
+    const status = charge?.status === 'success' ? 'paid' : (charge?.status || 'pending');
+    rows.push({
+      id: `ch_${charge.id}`,
+      clinic_id: charge.clinic_id || '',
+      clinic_name: clinicName(clinics, charge.clinic_id),
+      date,
+      paidAt: date,
+      amount,
+      amountUzs: amount,
+      method: 'click',
+      status,
+      orderId: txn || null,
+      note: charge.click_error_note || 'Kartadan yechish',
+      created_at: charge.created_at || date,
+    });
+  }
+  return rows;
+}
+
+/** When the ledger tables are empty, the clinic's last payment date is still a real payment. */
+export function ledgerFromLastPayments(clinics = [], existing = []) {
+  const seen = new Set((existing || []).map((row) => row.clinic_id).filter(Boolean));
+  const rows = [];
+  for (const clinic of clinics || []) {
+    if (!clinic?.last_payment_date || seen.has(clinic.id)) continue;
+    const date = String(clinic.last_payment_date).slice(0, 10);
+    const amount = monthlyPrice(clinic);
+    rows.push({
+      id: `last_${clinic.id}_${date}`,
+      clinic_id: clinic.id,
+      clinic_name: clinic.name || clinic.id,
+      date,
+      paidAt: date,
+      amount,
+      amountUzs: amount,
+      method: providerMethod(clinic.payment_provider || clinic.payment_method),
+      status: 'paid',
+      note: 'Oxirgi to\'lov',
+      created_at: `${date}T00:00:00.000Z`,
+    });
+  }
+  return rows;
 }

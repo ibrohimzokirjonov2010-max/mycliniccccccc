@@ -13,7 +13,8 @@ import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
 import { paymentStamp, formatClinicDateTime, tashkentToday } from '@/lib/clinicTime';
-import { computePatientBalances, unionPayments, isLinkedPlanInternal } from '@/lib/paymentDebt';
+import { computePatientBalances, unionPayments } from '@/lib/paymentDebt';
+import { patientBalance } from '@/lib/patientBalance';
 import { Input } from '@/components/ui/input';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
@@ -695,34 +696,7 @@ export default function MobilePaymentsV2() {
           base44.entities.Payment.filter({ patient_id: formData.patient_id }, '-date', 500)
         ]);
 
-        const totalIncomes = (patientPays || [])
-          .filter(p => p.type?.toLowerCase() === 'income')
-          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-        const totalDebts = (patientPays || [])
-          .filter(p => p.type?.toLowerCase() === 'debt')
-          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-        const totalRefunds = (patientPays || [])
-          .filter(p => p.type?.toLowerCase() === 'refund')
-          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-        // Plan-linked discount rows (wizard "Avtomatik chegirma") are already inside that plan's Debt row.
-        const totalDiscounts = (patientPays || [])
-          .filter(p => p.type?.toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
-          .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
-
-        if (totalDebts > 0) {
-          const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
-          currentDebt = net < 0 ? Math.abs(net) : 0;
-        } else if ((plans || []).length > 0) {
-          const totalPlansPrice = (plans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
-          const net = totalIncomes + totalDiscounts - totalPlansPrice;
-          currentDebt = net < 0 ? Math.abs(net) : 0;
-        } else {
-          const net = totalIncomes - totalRefunds;
-          currentDebt = net < 0 ? Math.abs(net) : 0;
-        }
+        currentDebt = patientBalance(formData.patient_id, patientPays || [], plans || []).debt;
 
         if (formData.type === 'Income') {
           if (currentDebt <= 0) {

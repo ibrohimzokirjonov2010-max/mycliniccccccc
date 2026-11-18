@@ -3,6 +3,7 @@ import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
+import { formatPhone } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { 
   AlertTriangle, Calendar, Clock, User, 
@@ -103,12 +104,7 @@ export default function NoShow() {
     if (period === 'overdue') return n != null && n > 30;
     return true;
   });
-  const fmtPhone = (ph) => {
-    const d = String(ph || '').replace(/\D/g, '');
-    if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
-    if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
-    return ph;
-  };
+  const fmtPhone = (ph) => (ph ? formatPhone(ph) : ph);
   const fmtDate = (v) => {
     const s = String(v || '').split('T')[0];
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);

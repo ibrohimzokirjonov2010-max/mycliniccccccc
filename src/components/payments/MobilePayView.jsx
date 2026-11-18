@@ -5,7 +5,7 @@ import {
   ArrowLeft, ChevronRight, CalendarDays, Folder, Clock, Check, Lock, Banknote,
   CreditCard, FileText, Upload, Loader2, Layers, Trash2, Stethoscope, Sparkles, X,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPhone } from '@/lib/utils';
 
 /*
  * Mobile "To'lov qilish" screen (phone only). Pure presentation: every value and
@@ -14,12 +14,7 @@ import { cn } from '@/lib/utils';
 
 export const fmtSum = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
-const fmtPhone = (p) => {
-  const d = String(p || '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
-  if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
-  return p || '—';
-};
+const fmtPhone = (p) => formatPhone(p);
 
 const initials = (name = '') => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
 

@@ -22,7 +22,8 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
-import { matchStaff, isIncomePayment } from '@/utils/clinicMetrics';
+import { matchStaff, isIncomePayment, isCompletedStatus } from '@/utils/clinicMetrics';
+import { sameDoctor } from '@/lib/payrollEarnings';
 
 // Standard Uzbek Months
 const UZ_MONTHS = [
@@ -162,6 +163,7 @@ export default function Payroll() {
   // Data states
   const [doctors, setDoctors] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Filter states
@@ -273,9 +275,10 @@ export default function Payroll() {
   const loadData = useCallback(async (preserveDoctors = []) => {
     try {
       setLoading(true);
-      const [users, pays] = await Promise.all([
+      const [users, pays, appts] = await Promise.all([
         base44.entities.User.list('name', 100),
-        base44.entities.Payment.list('-date', 5000)
+        base44.entities.Payment.list('-date', 2000),
+        base44.entities.Appointment.list('-date', 800).catch(() => []),
       ]);
 
       const currentClinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
@@ -296,6 +299,7 @@ export default function Payroll() {
 
       setDoctors(mergedDoctors);
       setPayments(pays || []);
+      setAppointments(appts || []);
     } catch (error) {
       console.error('Error loading payroll data:', error);
       toast.error(t('common.errorLoading'));
@@ -445,9 +449,32 @@ export default function Payroll() {
     // 1. All income payments for this doctor
     const allDoctorIncomePayments = payments.filter(p => {
       const matched = matchStaff(p, doctors);
-      const isDoctor = matched ? String(matched.id) === String(doctorId) : String(p.doctor_id) === String(doctorId);
-      const isIncome = isIncomePayment(p);
+      const isDoctor = matched ? String(matched.id) === String(doctorId) : (String(p.doctor_id) === String(doctorId) || sameDoctor(p, doctorObj));
+      const isIncome = isIncomePayment(p) || !String(p.type || '').trim();
       return isDoctor && isIncome;
+    });
+    const covered = new Set(allDoctorIncomePayments.map((row) => String(row.appointment_id || '')).filter(Boolean));
+    const coveredVisit = new Set(allDoctorIncomePayments.map((row) => `${row.patient_id || ''}|${String(row.date || '').slice(0, 10)}|${Math.round(Number(row.amount) || 0)}`));
+    (appointments || []).forEach((appt) => {
+      if (!doctorObj || !isCompletedStatus(appt.status) || !sameDoctor(appt, doctorObj)) return;
+      const price = Number(appt.price ?? appt.paid_amount) || 0;
+      if (price <= 0) return;
+      if (appt.id && covered.has(String(appt.id))) return;
+      const key = `${appt.patient_id || ''}|${String(appt.date || '').slice(0, 10)}|${Math.round(price)}`;
+      if (coveredVisit.has(key)) return;
+      allDoctorIncomePayments.push({
+        id: `appt-${appt.id}`,
+        appointment_id: appt.id,
+        patient_id: appt.patient_id,
+        patient_name: appt.patient_name,
+        doctor_id: appt.doctor_id || doctorObj.id,
+        doctor_name: appt.doctor_name || doctorObj.name,
+        amount: price,
+        type: 'Income',
+        date: appt.date,
+        service_name: appt.service_name || 'Qabul',
+        commission_rate: doctorObj.commission_rate,
+      });
     });
 
     // 2. Precompute ranges for Today, Week, Month, Year, All
@@ -612,7 +639,7 @@ export default function Payroll() {
       startDate: activeStartDate,
       endDate: activeEndDate
     };
-  }, [payments, doctors, selectedMonth, getMonthRange, doctorPeriodFilters]);
+  }, [payments, appointments, doctors, selectedMonth, getMonthRange, doctorPeriodFilters]);
 
   /**
    * Get all doctors payroll data

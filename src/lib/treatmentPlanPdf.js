@@ -5,6 +5,7 @@
  * Read-only: it never writes plan / patient / payment data.
  */
 import jsPDF from 'jspdf';
+import { formatPhone } from './utils';
 import html2canvas from 'html2canvas';
 import { base44 } from '@/api/base44Client';
 import { internalIdToFdi } from '@/lib/fdiNotation';
@@ -23,13 +24,7 @@ const fmtDate = (v) => {
   if (Number.isNaN(d.getTime())) return String(v);
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 };
-const fmtPhone = (v) => {
-  const raw = String(v || '').trim();
-  const d = raw.replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
-  if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
-  return raw;
-};
+const fmtPhone = (v) => (v ? formatPhone(v) : '');
 const ageOf = (v) => {
   const d = new Date(v);
   if (!v || Number.isNaN(d.getTime())) return null;

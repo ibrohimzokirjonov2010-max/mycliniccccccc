@@ -63,9 +63,9 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
   // Same volume strategy as chairside: list then client-filter (API doctor_id-only
   // filter undercounts when appointments only store doctor_name).
   const [apptsRaw, pats, paysRaw, totalPatientsCount] = await Promise.all([
-    base44.entities.Appointment.list('-date', 800),
-    base44.entities.Patient.list('-created_date', 200),
-    base44.entities.Payment.list('-date', 1000),
+    base44.entities.Appointment.list('-date', 180),
+    base44.entities.Patient.list('-created_date', 80),
+    base44.entities.Payment.list('-date', 180),
     base44.entities.Patient.count(),
   ]);
 

@@ -1,6 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
-import { isLinkedPlanInternal } from '@/lib/paymentDebt';
+import { patientBalance } from '@/lib/patientBalance';
 import { isDoneStatus } from '@/lib/planGroups';
 
 const LOCKED_PATIENT = 'patient-y2ii8ynf2';
@@ -111,15 +111,8 @@ export async function currentPatientDebt(patientId) {
     base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 50),
     base44.entities.Payment.filter({ patient_id: patientId }, '-date', 500),
   ]);
-  const sum = (t) => (pays || []).filter((p) => p.type?.toLowerCase() === t).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  const inc = sum('income'); const debts = sum('debt'); const ref = sum('refund');
-  // Plan-linked discount rows (wizard "Avtomatik chegirma", "Reja:") are already inside the discounted Debt rows.
-  const disc = (pays || []).filter((p) => p.type?.toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount')).reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
-  let net;
-  if (debts > 0) net = inc + disc - debts - ref;
-  else if ((plans || []).length) net = inc + disc - (plans || []).reduce((s, p) => s + (Number(p.total_price) || 0), 0);
-  else net = inc - ref;
-  return { debt: net < 0 ? Math.abs(net) : 0, plans: plans || [] };
+  const balance = patientBalance(patientId, pays, plans);
+  return { debt: balance.debt, plans: plans || [] };
 }
 
 /** Patient totals with the same debt rule as currentPatientDebt (no double-counted plan discounts). */

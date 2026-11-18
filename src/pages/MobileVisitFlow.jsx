@@ -10,6 +10,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { resolveTreatingDoctor } from '@/lib/treatingDoctor';
 import { tashkentToday, addDaysKey, formatClinicDate } from '@/lib/clinicTime';
+import { formatPhone } from '@/lib/utils';
 import { getPatientTelegramChatId, sendTelegramMessage } from '@/lib/telegramReminderService';
 import { createAppointmentSafely, scheduleAppointmentNotifications } from '@/components/appointments/AppointmentModal';
 import {
@@ -35,12 +36,7 @@ const fmt = (n) => `${Math.round(Number(n) || 0).toLocaleString('ru-RU').replace
 const fmtNum = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/\u00a0|,/g, ' ');
 const parseNum = (s) => Number(String(s || '').replace(/\D/g, '')) || 0;
 const initials = (name) => String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-const fmtPhone = (ph) => {
-  const d = String(ph || '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
-  if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
-  return ph || '';
-};
+const fmtPhone = (ph) => (ph ? formatPhone(ph) : '');
 const ageOf = (bd) => {
   if (!bd) return null;
   const b = new Date(bd);

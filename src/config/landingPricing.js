@@ -7,6 +7,7 @@
  * Narxni o'zgartirish kerak bo'lsa — faqat shu faylni tahrirlang.
  */
 import { supportContacts } from '@/lib/clinicExpiry';
+import { formatPhone } from '@/lib/utils';
 
 const support = supportContacts();
 
@@ -111,9 +112,5 @@ export function phoneHref() {
 }
 
 export function phoneLabel() {
-  const d = String(LANDING_CONTACT.phone || '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('998')) {
-    return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10, 12)}`;
-  }
-  return LANDING_CONTACT.phone;
+  return LANDING_CONTACT.phone ? formatPhone(LANDING_CONTACT.phone) : '';
 }
