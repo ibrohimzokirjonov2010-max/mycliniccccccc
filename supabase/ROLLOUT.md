@@ -1,6 +1,6 @@
 # Phase 1 rollout
 
-Uzbek qisqa: production bazasiga hozir hech narsa yozilmagan. Avval preview. Keyin zaxira. Keyin pastdagi fayllarni **birma-bir** tasdiqlab ishga tushiring. P0-1, P0-2 va P0-3 qaytarib bo'lmaydi.
+Uzbek qisqa: production bazasiga hozir hech narsa yozilmagan. Avval preview. Keyin zaxira. Keyin pastdagi fayllarni **birma-bir** tasdiqlab ishga tushiring. P0-1, P0-2 va admin parolini almashtirish qaytarib bo'lmaydi. Bemor yozuvlarini yoppasiga o'zgartiruvchi skriptni ishga tushirmang.
 
 Nothing in this branch has been applied to Supabase project `zvyggjldzkxwufpnaatr`. Do not run it against StomaHub `agmkoeuhqrwdvrreamhj`.
 
@@ -19,12 +19,12 @@ supabase db dump -f backup-before-phase1.sql
 3. Pro plan adds daily backups (7 days on Pro). Point-in-time recovery is a paid add-on on Pro or above and needs the Small compute size or larger. Turn those on before relying on them. Restoring a project from a dump is the fallback until then.
 4. Practice a restore on a throwaway project, not on the live one.
 
-If P0-3 rewrites a row that was a real patient, only this dump can bring the text back.
+If a later, separate anonymize script is ever used, only a dump can restore those specific rows. P0-3a does not rewrite patient text.
 
 ## Deploy the app first, on a preview
 
 1. Merge is not required. Open the preview deployment for this branch.
-2. Confirm login with a non-demo clinic user still reaches the dashboard.
+2. Confirm login with a real clinic user still reaches the dashboard. `default_clinic` is a real clinic, not a public demo.
 3. Confirm the browser network log shows `POST /api/auth?action=login` and no `users?select=*` that returns a `password` field.
 4. Confirm a made-up password is rejected and that no Base64 `auth_token` is written.
 5. Only after that preview looks right, take the dump above and run the SQL files in order on `zvyggjldzkxwufpnaatr`.
@@ -39,7 +39,7 @@ Run these in the SQL editor, one file per run, after the dump.
 | --- | --- | --- | --- |
 | 1 | `supabase/migrations/20261118120000_p0_1_drop_execute_sql.sql` | Drops `public.execute_query(text)` and `public.execute_ddl(text)`. The app does not call them. | None. Do not recreate these functions. |
 | 2 | `supabase/migrations/20261118120100_p0_2_drop_crm_backup_passwords.sql` | Drops `crm_backup.user_passwords_final` and `crm_backup.clinic_passwords_final`, including every password copy in them. Other `crm_backup` tables stay, with RLS and no policies. `crm_private.user_passwords` is not opened and gets no new policy. | None for the dropped rows. Restore the dump. |
-| 3 | `supabase/migrations/20261118120200_p0_3_demo_lock_and_anonymize.sql` | For `default_clinic` and `store-review-demo` only: replaces password hashes with a random hash nobody knows, and rewrites names, phones, addresses, notes, and x-ray URLs to placeholders such as `Demo Bemor 01`. Does not delete rows. Does not touch other clinics. | None for the rewritten text or the old demo password. Restore the dump. |
+| 3 | `supabase/migrations/20261118120200_p0_3_lock_demo_login.sql` | Replaces the password hash for `default_clinic` / `admin` only. The old password stops working. No patient, appointment, payment, or x-ray row is read or written. Other staff keep their passwords. | None for the old hash. Restore that one hash from the dump, or set a new private password (below). |
 
 ## Reversible steps (still approve before running)
 
@@ -50,17 +50,17 @@ Run these in the SQL editor, one file per run, after the dump.
 
 ## Existing users (about 10)
 
-Hashes already live in `crm_private.user_passwords`. Public `users.password` is empty. This rollout does not reset those hashes, except users in `default_clinic` and `store-review-demo`.
-
-Everyone else keeps the same clinic id, username, and password. After the app deploy they must sign in once. The server checks the password and Supabase Auth issues the session (`app_metadata.clinic_id`, `crm_role`, `crm_user_id`). The first successful login creates the shadow Auth user if it does not exist yet.
+Hashes already live in `crm_private.user_passwords`. Public `users.password` is empty. This rollout resets one hash: `default_clinic` user `admin`. Every other user keeps the same clinic id, username, and password. After the app deploy they must sign in once. The server checks the password and Supabase Auth issues the session (`app_metadata.clinic_id`, `crm_role`, `crm_user_id`). The first successful login creates the shadow Auth user if it does not exist yet.
 
 Short passwords that are already stored still work until that user changes them. New and changed passwords must be at least 8 characters.
 
-## Demo clinic password
+## Published admin login
 
-P0-3 makes the old demo password stop working. It does not choose a new one, and this repo must not contain one.
+`default_clinic` is a real clinic. Do not use it as a public demo, and do not publish its id with a password.
 
-After P0-3, set a new password yourself in the SQL editor. Do not paste it into chat or git. The existing capture trigger should move it into `crm_private` and clear the public column:
+P0-3a makes the old `admin` password on that clinic stop working. It does not choose a new one, and this repo must not contain one. Other people who work in that clinic are not locked.
+
+After P0-3a, set a new password yourself in the SQL editor. Do not paste it into chat or git. The existing capture trigger should move it into `crm_private` and clear the public column:
 
 ```sql
 UPDATE public.users
@@ -70,6 +70,12 @@ WHERE lower(clinic_id) = 'default_clinic'
 ```
 
 Then sign in on the preview. If the public column is still the secret after that update, stop and say so before trying again. Do not leave the secret in `public.users`.
+
+## Public demos
+
+Create a separate empty clinic for public demos. Put only fake rows in it, with names that start with `TEST ` or with ids you have listed. Do not point visitors at `default_clinic`.
+
+`supabase/manual/NOT_YET_anonymize_confirmed_fake_rows.sql` is not in the rollout. It aborts until an id list or a confirmed name prefix is filled in. It must never be edited to update a whole clinic. Do not run it as part of this phase.
 
 ## What the app change does
 
@@ -83,8 +89,7 @@ Then sign in on the preview. If the public column is still the secret after that
 
 - Security advisor no longer lists `execute_query` or `execute_ddl`.
 - `crm_backup.user_passwords_final` and `clinic_passwords_final` are gone.
-- Demo `admin` with the old password is rejected.
-- A demo patient list shows `Demo Bemor`, not a real-looking name or phone.
+- `default_clinic` / `admin` with the old password is rejected. Patient names and phones in that clinic are unchanged.
 - A 7-character new password is rejected.
 - A user from clinic A cannot read clinic B.
 
@@ -93,4 +98,4 @@ Then sign in on the preview. If the public column is still the secret after that
 - Leaked-password protection (Needs the Pro plan, then Authentication → Email).
 - Two-factor sign-in, receptionist RLS, phone masking, export limits, and the access log.
 - StomaHub `agmkoeuhqrwdvrreamhj`. Do not apply these files there.
-- HttpOnly session cookies.
+- `supabase/manual/NOT_YET_anonymize_confirmed_fake_rows.sql`. Do not run it in this phase.

@@ -25,7 +25,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** Brauzer parolni o'zi tekshirardi va imzosiz Base64 sessiya yozardi. `execute_query` / `execute_ddl` ochiq edi. Demo `default_clinic` kartalari haqiqiy odamga o'xshardi.
 - **Sababi:** Login zaxira yo'li `users` ni brauzerga berardi. Tarif `localStorage` va klinika id dan olinardi.
 - **Qanday tuzatildi:** Kirish faqat `/api/auth` va Supabase sessiyasi. Qaytarib bo'lmaydigan SQL alohida fayllarda, productionga yozilmagan.
-- **Qaytalamaslik choralari:** `btoa` sessiya qaytarmang. `execute_query` ni qayta yaratmang. `clinics` qatorini parolsiz upsert qilmang. `default_clinic` dan boshqa klinikani P0-3 skriptiga qo'shmang. `patient-y2ii8ynf2` ga yozmang.
+- **Qaytalamaslik choralari:** `btoa` sessiya qaytarmang. `execute_query` ni qayta yaratmang. `clinics` qatorini parolsiz upsert qilmang. `default_clinic` ni ommaviy demo deb ko'rsatmang va bemor qatorlarini klinikani yoppasiga yozmang. `patient-y2ii8ynf2` ga yozmang.
 
 ### 💰 Implant narxi — katalogdagi tojlar yig'ilmasin
 - **Sana:** 2026-10-05

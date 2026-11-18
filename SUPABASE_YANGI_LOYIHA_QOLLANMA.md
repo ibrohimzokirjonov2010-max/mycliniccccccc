@@ -73,14 +73,6 @@ SQL tugagandan keyin `Table Editor`da kamida quyidagilar ko'rinishi kerak:
 - `botconfigs`
 - `telegrambookings`
 
-## Default login
+## Login
 
-- Klinika ID: `ava-dent`
-- Admin: `admin`
-- Parol: `ava7`
-
-Yoki:
-
-- Klinika ID: `default_clinic`
-- Admin: `admin`
-- Parol: `admin`
+Tayyor login shu hujjatda berilmaydi. `default_clinic` haqiqiy klinika. Ommaviy ko'rsatish uchun alohida bo'sh demo klinika yarating.

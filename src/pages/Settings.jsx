@@ -487,7 +487,7 @@ export default function Settings() {
                     </div>
                     <div className="col-span-7 p-2 flex items-center justify-between">
                       <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                        {localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || 'default_clinic'}
+                        {localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || '—'}
                       </span>
                       <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                         {t('settings.clinic.immutable') || "O'zgarmas ID"}

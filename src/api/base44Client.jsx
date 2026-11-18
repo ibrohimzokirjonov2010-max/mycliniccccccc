@@ -1588,12 +1588,7 @@ class HybridEntityLoader {
 }
 
 // Default users for each clinic (initial demo users only)
-const DEFAULT_USERS = [
-  { id: 'user-1', clinic_id: 'ava-dent', username: 'admin', email: 'admin@avadent.uz', name: 'Administrator', role: 'admin', commission_rate: 0 },
-  { id: 'user-2', clinic_id: 'ava-dent', username: 'doctor', email: 'doctor@avadent.uz', name: 'Shifokor', role: 'doctor', commission_rate: 30 },
-  { id: 'user-3', clinic_id: 'default_clinic', username: 'admin', email: 'admin@demo.uz', name: 'Demo Admin', role: 'admin', commission_rate: 0 },
-  { id: 'user-4', clinic_id: 'default_clinic', username: 'demo', email: 'doctor@demo.uz', name: 'Demo User', role: 'doctor', commission_rate: 30 }
-];
+const DEFAULT_USERS = [];
 
 export const DEFAULT_SERVICES_DATA = [
   // TERAPIYA (ENDO + PLOMBA)
@@ -1672,11 +1667,6 @@ function scrubStoredSecrets() {
 
 const initializeSystem = () => {
   scrubStoredSecrets();
-  const stored = localStorage.getItem('system_users');
-  if (!stored) {
-    localStorage.setItem('system_users', JSON.stringify(DEFAULT_USERS));
-    console.log('✅ System initialized with default users');
-  }
 
   // Spelling Correction & Data Integrity Migration (UZ/RU/EN typos cleanup in local databases)
   try {
@@ -1952,30 +1942,7 @@ const initializeSystem = () => {
 initializeSystem();
 
 // System Admin (Owner) Storage
-const DEFAULT_CLINICS = [
-  { 
-    id: 'ava-dent', 
-    name: 'Ava Dent Clinic', 
-    logo: '/logo.png', 
-    expires_at: '2026-12-31', 
-    status: 'Active',
-    created_at: '2024-01-01',
-    monthly_fee: 189000,
-    last_payment_date: '2025-10-01',
-    plan: 'pro'
-  },
-  { 
-    id: 'default_clinic', 
-    name: 'Demo Clinic', 
-    logo: null, 
-    expires_at: '2030-01-01', 
-    status: 'Active',
-    created_at: '2024-01-01',
-    monthly_fee: 189000,
-    last_payment_date: new Date().toISOString().split('T')[0],
-    plan: 'pro'
-  }
-];
+const DEFAULT_CLINICS = [];
 
 export const base44 = {
   entities: {
