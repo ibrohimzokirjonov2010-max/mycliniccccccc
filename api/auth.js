@@ -8,6 +8,8 @@ import { bodyOf, guard, send } from './_lib/http.js';
 import { clinicExpired } from './_lib/payments.js';
 import { mintSession } from './_lib/crmSession.js';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
+import { accountLoginBlocked, readSession } from './_lib/crmActor.js';
+import { deleteAccount } from './_lib/deleteAccount.js';
 
 /**
  * Klinika foydalanuvchilari uchun server auth + RLS yoqilganda kerak bo'ladigan ochiq (public) amallar.
@@ -19,6 +21,7 @@ import { supabaseAdmin } from './_lib/supabaseAdmin.js';
  *   GET  /api/auth?action=public-clinic&slug=..        -> { clinic, doctors }   (faqat xavfsiz maydonlar)
  *   GET  /api/auth?action=public-slots&clinic_id=..    -> { appointments }      (faqat band vaqtlar)
  *   POST /api/auth?action=public-book { clinic_id, doctor_id, name, phone, notes, date, time }
+ *   POST /api/auth?action=delete-account   Authorization: Bearer <session>  { confirm: true }
  * session = Supabase Auth sessiyasi (Supabase ES256 bilan imzolagan), app_metadata.clinic_id bilan.
  * Parollar/hashlar hech qachon javobga qo'shilmaydi.
  */
@@ -125,6 +128,7 @@ async function login(sb, body) {
     if (await checkPassword(password, await storedHash(sb, u))) { user = u; break; }
   }
   if (!user) return [401, { ok: false, error: 'invalid_credentials' }];
+  if (accountLoginBlocked(user)) return [403, { ok: false, error: 'account_disabled' }];
 
   const stored = await storedHash(sb, user);
   if (stored && !BCRYPT_RE.test(stored)) {
@@ -298,6 +302,7 @@ async function handoff(sb, b) {
   // Landing javobidagi foydalanuvchi bizning bazada aynan shu klinikada bo'lishi shart.
   const { data: user } = await sb.from('users').select('*').eq('id', str(data.user.id, 80)).maybeSingle();
   if (!user || norm(user.clinic_id) !== norm(data.user.clinic_id)) return [401, { ok: false, error: 'handoff_user_mismatch' }];
+  if (accountLoginBlocked(user)) return [403, { ok: false, error: 'account_disabled' }];
   const { data: clinic } = await sb.from('clinics').select(CLINIC_COLS.join(',')).ilike('id', likeId(user.clinic_id)).limit(1).maybeSingle();
   if (!clinic) return [404, { ok: false, error: 'clinic_not_found' }];
   if (clinic.status !== 'Active') return [403, { ok: false, error: 'clinic_inactive' }];
@@ -331,27 +336,15 @@ function missingColumn(error) {
 const STAFF_PROTECTED = new Set(['id', 'password', 'clinic_id', 'role', 'username']);
 
 async function actorFrom(req, sb) {
-  const match = /^Bearer\s+(\S+)/.exec(String(req.headers.authorization || ''));
-  if (!match) return null;
-  const { data, error } = await sb.auth.getUser(match[1]);
-  if (error || !data?.user) return null;
-  const meta = data.user.app_metadata || {};
-  const jwtRole = String(meta.crm_role || '').toLowerCase();
-  const userId = String(meta.crm_user_id || '');
-  if (jwtRole === 'superadmin') {
-    return { userId: userId || 'superadmin', clinicId: meta.clinic_id ? String(meta.clinic_id) : '', role: 'superadmin', admin: true, platform: true, notes: '' };
-  }
-  if (!userId) return null;
-  const { data: row } = await sb.from('users').select('id,clinic_id,role,notes').eq('id', userId).maybeSingle();
-  if (!row) return null;
-  const role = String(row.role || '').toLowerCase();
+  const session = await readSession(sb, req);
+  if (!session) return null;
   return {
-    userId: row.id,
-    clinicId: String(row.clinic_id || ''),
-    role,
-    admin: role === 'admin' || role === 'owner',
-    platform: false,
-    notes: row.notes || '',
+    userId: session.userId,
+    clinicId: session.clinicId,
+    role: session.role,
+    admin: session.admin,
+    platform: session.platform,
+    notes: session.notes,
   };
 }
 
@@ -452,7 +445,7 @@ async function saveStaff(sb, req, body) {
 export default async function handler(req, res) {
   const action = String(req.query?.action || '');
   const isGet = ['clinic-available', 'public-clinic', 'public-slots'].includes(action);
-  const limits = { login: 20, register: 5, 'public-book': 10, 'doctor-register': 5, handoff: 20, 'save-staff': 30, 'change-password': 10 };
+  const limits = { login: 20, register: 5, 'public-book': 10, 'doctor-register': 5, handoff: 20, 'save-staff': 30, 'change-password': 10, 'delete-account': 5 };
   if (!guard(req, res, { method: isGet ? 'GET' : 'POST', limit: limits[action] || 0 })) return;
   const sb = supabaseAdmin();
   if (!sb) return send(res, 503, { ok: false, error: 'server_not_configured' });
@@ -467,6 +460,7 @@ export default async function handler(req, res) {
     else if (action === 'handoff') out = await handoff(sb, bodyOf(req));
     else if (action === 'change-password') out = await changePassword(sb, req, bodyOf(req));
     else if (action === 'save-staff') out = await saveStaff(sb, req, bodyOf(req));
+    else if (action === 'delete-account') out = await deleteAccount(sb, req, bodyOf(req));
     else if (action === 'clinic-available') {
       const id = str(req.query?.id, 60);
       const { data } = await sb.from('clinics').select('id').ilike('id', likeId(id)).limit(1);
