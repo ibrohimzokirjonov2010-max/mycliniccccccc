@@ -9,6 +9,8 @@ Tayyor matnlar:
 - `mobile/store/content-rating.md` — yosh reytingi savollari
 - `mobile/store/review-notes.txt` — App Review eslatmasi. Parolni shu yerga yozmang
 - `mobile/store/screenshots/` — skrinshotlar va Play grafikalar
+- `mobile/store/REVIEW_CHECKLIST.md` — App Review va Play review bandlari, holat va dalil
+- `mobile/SUBMIT.md` — shu qo‘llanma
 
 Ommaviy sahifalar (veb):
 
@@ -17,10 +19,14 @@ Ommaviy sahifalar (veb):
 
 ## 1. Hisoblar
 
-1. Apple Developer Program ga yoziling: https://developer.apple.com/programs/
-2. App Store Connect da yangi iOS ilova oching. Bundle ID: `app.myclinic.crm` (yoki o‘zingizniki bo‘lsa, `app.json` dagi `ios.bundleIdentifier` ni o‘sha qiymatga almashtiring).
-3. Google Play Console da ilova oching. Package name `app.json` dagi `android.package` bilan bir xil bo‘lsin.
-4. Play Console → API access dan service account yarating, JSON kalitni yuklab oling va `mobile/store/google-play-service-account.json` qilib qo‘ying. Bu fayl git ga kirmaydi.
+Google Play hisobi **tashkilot** sifatida ochiladi. Shaxsiy hisob emas.
+
+1. Dun & Bradstreet dan tashkilot uchun D-U-N-S raqamini oling: https://www.dnb.com/duns.html. Play Console tashkilotni shu raqam bilan tekshiradi. Tekshiruv bir necha kun olishi mumkin.
+2. Google Play Console da hisobni Organization qilib oching: https://play.google.com/console/signup. Tashkilot hisobida 12 kishilik yopiq test (14 kun) talab qilinmaydi. `eas.json` dagi Android track `production`.
+3. Apple Developer Program ga yoziling: https://developer.apple.com/programs/. Tashkilot nomidan yozilsa, Apple ham D-U-N-S so‘raydi. Shaxs nomidan yozilsa, D-U-N-S shart emas.
+4. App Store Connect da yangi iOS ilova oching. Bundle ID: `app.myclinic.crm` (band bo‘lsa, `app.json` dagi `ios.bundleIdentifier` ni o‘zingiznikiga almashtiring).
+5. Play Console da ilova oching. Package name `android.package` bilan bir xil bo‘lsin.
+6. Play Console → API access dan service account yarating, JSON kalitni yuklab oling va `mobile/store/google-play-service-account.json` qilib qo‘ying. Bu fayl git ga kirmaydi.
 
 ## 2. EAS
 
@@ -40,7 +46,7 @@ eas init
 - `submit.production.ios.ascAppId` — App Store Connect dagi raqamli Apple ID (ilova sahifasidagi Apple ID, bundle id emas)
 - `submit.production.ios.appleTeamId` — Apple Developer jamoangizning Team ID si
 - `submit.production.android.serviceAccountKeyPath` — `./store/google-play-service-account.json` (joyida qoldiring, faylni o‘sha yo‘lga qo‘ying)
-- `submit.production.android.track` — birinchi yopiq sinov uchun `internal`, do‘konga chiqarish uchun `production`
+- `submit.production.android.track` — `production`. Tashkilot hisobida yopiq test shart emas.
 
 `.env` yoki EAS environment ga qo‘ying (service role emas, faqat anon kalit):
 
@@ -97,10 +103,13 @@ Yuborilgandan keyin do‘konlarda “Waiting for Review” holatini kuting. Rad 
 
 ## Faqat egasi qiladigan ishlar
 
-- Apple Developer va Google Play hisoblarini ochish va to‘lash
+- Apple Developer Program ga yozilish (tashkilot bo‘lsa D-U-N-S)
+- Google Play Console ni tashkilot sifatida ochish va D-U-N-S tekshiruvidan o‘tish. 12 testerlik yopiq test kerak emas
 - Bundle ID / package name ni o‘ziga biriktirish, agar `app.myclinic.crm` band bo‘lsa
 - `eas login`, `eas init`, ascAppId, appleTeamId va Play service account JSON
 - Anon kalitni EAS production environment ga qo‘yish
 - `demo_clinic` (yoki `qa_test_1811`) uchun review login va parolini do‘kon formalariga yozish
 - Listing, privacy, reyting va skrinshotlarni do‘konlarga joylash
+- Shu PR `main` ga qo‘shilgach, `/privacy` va `/delete-account` production da ochilishini tekshirish
+- PR #69 ni qo‘shish, shunda hisob o‘chirish serverda ishlaydi
 - `eas build` va `eas submit` ni o‘z hisobidan ishga tushirish
