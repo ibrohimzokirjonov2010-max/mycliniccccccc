@@ -1,0 +1,19 @@
+App Review notes — My Clinic
+
+This is a business app for dental clinic staff (B2B). It is not a consumer app. It does not create accounts and it does not offer Google, Facebook, or Sign in with Apple. The only sign-in is the clinic’s own clinic ID, username, and password. Sign in with Apple is not required. If a third-party social login is added later, Sign in with Apple must be added too.
+
+Sign-in (the owner fills the password in App Store Connect / Play Console, not in git):
+
+Clinic ID: demo_clinic
+Username: OWNER_FILLS_THIS
+Password: OWNER_FILLS_THIS
+
+If demo_clinic is unavailable, use clinic ID qa_test_1811 with the same kind of staff login. Do not use default_clinic. That clinic holds real patient records.
+
+After sign-in, the home screen shows today’s visits. Patients, Visits, Payments, and Doctors are in the tab bar. Account holds the privacy policy, password change, and Delete account.
+
+Delete account: Account → Delete account → confirm in the dialog. No password is sent. If the server action is not deployed yet, the app shows how to contact support. The public page is https://app-shahobidin-4.vercel.app/delete-account
+
+Privacy: in the app (login screen and Account) and https://app-shahobidin-4.vercel.app/privacy
+
+No demo hardware and no in-app purchase. The app does not ask for location, camera, microphone, contacts, or photos. It uses only HTTPS (export compliance: exempt encryption).
