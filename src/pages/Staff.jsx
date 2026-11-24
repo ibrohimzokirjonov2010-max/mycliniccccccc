@@ -20,6 +20,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { applyPhoneMask, formatPhone } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useFeature } from '@/hooks/useFeature';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -1007,7 +1008,7 @@ export default function Staff() {
           <form onSubmit={handleAddStaff} className="space-y-3.5 pt-2">
             {F({ icon: Users, label: t('staff.full_name'), children: <input placeholder="Dr. Alisher Toshmatov" value={newStaff.full_name} onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value })} className={inp} /> })}
             <div className="grid grid-cols-2 gap-3">
-              {F({ icon: Phone, label: t('staff.phone'), children: <input type="tel" placeholder="+998 90 123 45 67" value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} className={inp} /> })}
+              {F({ icon: Phone, label: t('staff.phone'), children: <input type="tel" placeholder="+998 90 123 45 67" value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: applyPhoneMask(e.target.value) })} className={inp} /> })}
               {F({ icon: Award, label: t('staff.specialty'), children: <input placeholder="Stomatolog" value={newStaff.specialty} onChange={(e) => setNewStaff({ ...newStaff, specialty: e.target.value })} className={inp} /> })}
               {F({ icon: UserCheck, label: t('staff.username'), children: <input placeholder="alisher_dr" autoCapitalize="none" value={newStaff.username} onChange={(e) => setNewStaff({ ...newStaff, username: e.target.value })} className={inp} /> })}
               {F({ icon: KeyRound, label: t('staff.password'), children: <PasswordInput placeholder="••••••" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} className="h-12 rounded-xl bg-slate-50/60 text-[14px]" /> })}
@@ -1038,7 +1039,7 @@ export default function Staff() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{t('staff.phone')}</Label>
-              <Input placeholder="+998 90 123 45 67" value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} className="rounded-xl" />
+              <Input placeholder="+998 90 123 45 67" value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: applyPhoneMask(e.target.value) })} className="rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label>{t('staff.specialty')}</Label>
@@ -1118,7 +1119,7 @@ export default function Staff() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600">{t('staff.phone')}</Label>
-                <Input value={editStaffForm.phone} onChange={(e) => setEditStaffForm({ ...editStaffForm, phone: e.target.value })} className="rounded-xl h-11" />
+                <Input value={editStaffForm.phone} onChange={(e) => setEditStaffForm({ ...editStaffForm, phone: applyPhoneMask(e.target.value) })} className="rounded-xl h-11" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600">{t('staff.specialty')}</Label>
@@ -1217,7 +1218,7 @@ function PhoneStaffRow({ card, rank, language, presenceLabel, onOpen }) {
       <button type="button" onClick={onOpen} className="shrink-0"><Avatar user={card.user} size={46} className="rounded-full" /></button>
       <button type="button" onClick={onOpen} className="flex-1 min-w-0 text-left">
         <div className="font-bold text-[16px] text-slate-900 truncate leading-tight">{formatDoctorName(card.name)}</div>
-        <div className="text-[13px] text-slate-500 truncate"><span className="font-mono">@{card.username || '—'}</span>{card.phone ? ` · ${card.phone}` : ''}</div>
+        <div className="text-[13px] text-slate-500 truncate"><span className="font-mono">@{card.username || '—'}</span>{card.phone ? ` · ${formatPhone(card.phone)}` : ''}</div>
         <div className="flex flex-wrap gap-1.5 mt-1.5">
           <RoleBadge role={card.role} language={language} />
           {card.specialty && card.role !== 'admin' && <span className="px-2 py-0.5 rounded-md text-[12px] font-medium bg-slate-100 text-slate-600">{card.specialty}</span>}
@@ -1431,7 +1432,7 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
             <Avatar user={card.user} size={phone ? 56 : 64} />
             <div className="min-w-0">
               <div className="text-lg font-extrabold tracking-tight truncate">{formatDoctorName(card.name)}</div>
-              <div className="text-xs text-slate-500 font-mono truncate">@{card.username || '—'}{card.phone ? ` · ${card.phone}` : ''}</div>
+              <div className="text-xs text-slate-500 font-mono truncate">@{card.username || '—'}{card.phone ? ` · ${formatPhone(card.phone)}` : ''}</div>
               <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                 <RoleBadge role={card.role} language={language} />
                 {card.specialty && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">{card.specialty}</span>}
@@ -1582,7 +1583,7 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
           {tab === 'login' && (
             <div className="space-y-2 text-sm">
               <div className="rounded-xl border border-slate-100 p-3"><span className="text-[10px] uppercase font-bold text-slate-400">Login</span><div className="font-mono font-bold">@{card.username || '—'}</div></div>
-              <div className="rounded-xl border border-slate-100 p-3"><span className="text-[10px] uppercase font-bold text-slate-400">{tx(language, 'Telefon', 'Телефон', 'Phone')}</span><div className="font-bold">{card.phone || '—'}</div></div>
+              <div className="rounded-xl border border-slate-100 p-3"><span className="text-[10px] uppercase font-bold text-slate-400">{tx(language, 'Telefon', 'Телефон', 'Phone')}</span><div className="font-bold">{card.phone ? formatPhone(card.phone) : '—'}</div></div>
               <p className="text-[11px] text-slate-400">{tx(language, 'Parol ko\'rsatilmaydi. Yangilash uchun pastdagi tugmadan foydalaning.', 'Пароль скрыт. Обновите его кнопкой ниже.', 'The password is hidden. Use the button below to change it.')}</p>
             </div>
           )}

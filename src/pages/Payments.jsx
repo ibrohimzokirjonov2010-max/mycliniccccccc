@@ -34,6 +34,8 @@ import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, 
 import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, parseDisplayDateTime } from '@/lib/clinicTime';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { computePatientBalances, isListedPayment, unionPayments } from '@/lib/paymentDebt';
+import { patientBalance } from '@/lib/patientBalance';
+import { useClinicId } from '@/hooks/useClinicId';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { getPlanPayRows, pickSelectedServices, allocateSelectedServices, buildPlanPaidLines, normalizePaidServices, rescalePaidServices, stripHiddenTags } from '@/lib/paymentPlanServices';
 import { toast } from 'sonner';
@@ -51,17 +53,7 @@ const paymentAddDialogStyle = {
   minHeight: 0,
 };
 
-const formatPhoneSingleLine = (phone) => {
-  if (!phone) return '—';
-  const digits = String(phone).replace(/\D/g, '');
-  if (digits.length === 12 && digits.startsWith('998')) {
-    return `+998 ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10, 12)}`;
-  }
-  if (digits.length === 9) {
-    return `+998 ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}`;
-  }
-  return phone;
-};
+const formatPhoneSingleLine = (phone) => formatPhone(phone);
 
 const CATEGORY_TRANSLATIONS = {
   'treatment': 'Davolash',
@@ -178,6 +170,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isDoctor } = useAuth();
+  const clinicId = useClinicId();
   const { clinicName, clinicPhone, clinicAddress } = useClinic();
   const queryClient = useQueryClient();
 
@@ -285,7 +278,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
 
   // ── React Query: Patients + Doctors + Treatment Plans (initial load) ─────
   const { data: initialPatients = [], isLoading: patientsLoading } = useQuery({
-    queryKey: ['patients', isDoctor, user?.id],
+    queryKey: ['patients', clinicId, isDoctor, user?.id],
     queryFn: async () => {
       if (isDoctor && user?.id) {
         const allPats = await base44.entities.Patient.list('-created_date', 500).catch(() => []);
@@ -298,7 +291,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
       }
       return await base44.entities.Patient.list('full_name', 300);
     },
-    enabled: !!user && !embedded,
+    enabled: !!user && !!clinicId && !embedded,
     staleTime: 5 * 60 * 1000,
   });
   const { data: initialDoctors = [] } = useQuery({
@@ -318,13 +311,13 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
   const { data: allTreatmentPlans = [] } = useQuery({
     queryKey: ['allTreatmentPlansForPayments'],
     queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 500),
-    enabled: !!user && !embedded,
+    enabled: !!user && !!clinicId && !embedded,
     staleTime: 3 * 60 * 1000,
   });
   const { data: balancePayments = [] } = useQuery({
-    queryKey: ['payment-balance-source'],
+    queryKey: ['payment-balance-source', clinicId],
     queryFn: () => base44.entities.Payment.list('-created_date', 1000),
-    enabled: !!user && !embedded,
+    enabled: !!user && !!clinicId && !embedded,
     staleTime: 60 * 1000,
   });
 
@@ -413,7 +406,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
     data: paymentsPageData,
     isFetching: paymentsFetching,
   } = useQuery({
-    queryKey: ['payments', debouncedSearch, page, isDoctor, user?.id],
+    queryKey: ['payments', clinicId, debouncedSearch, page, isDoctor, user?.id],
     queryFn: async () => {
       const offset = page * PAGE_SIZE;
       if (isDoctor && user?.id) {
@@ -429,7 +422,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
         : await base44.entities.Payment.list('-date', PAGE_SIZE, offset);
       return pays || [];
     },
-    enabled: !!user && !embedded,
+    enabled: !!user && !!clinicId && !embedded,
     staleTime: 3 * 60 * 1000,
     placeholderData: (prev) => prev, // Eski ma'lumot search paytida ko'rinib turadi
   });
@@ -487,7 +480,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
 
   // ── React Query: Stats (10 daqiqa kesh — sahifa ochilganda 1 marta yuklanadi) ─
   const { data: statsData } = useQuery({
-    queryKey: ['paymentStats', isDoctor, user?.id],
+    queryKey: ['paymentStats', clinicId, isDoctor, user?.id],
     queryFn: async () => {
       if (isDoctor && user?.id) {
         const docPays = await base44.entities.Payment.filter({ doctor_id: user.id }, '-date', 500, 0).catch(() => []);
@@ -496,7 +489,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
       const allPays = await base44.entities.Payment.list('-date', 500, 0);
       return allPays || [];
     },
-    enabled: !!user && !embedded,
+    enabled: !!user && !!clinicId && !embedded,
     staleTime: 10 * 60 * 1000, // 10 daqiqa — statsni har search da qayta yuklamaslik
   });
 
@@ -583,21 +576,8 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
         base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 50).catch(() => [])
       ]);
       setPatientPlans(plans || []);
-      const totalPlansPrice = (plans || []).reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
-
-      const totalIncomes = (pays || []).filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      const totalDebts = (pays || []).filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      const totalRefunds = (pays || []).filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      const totalDiscounts = (pays || []).filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
-
-      let calcDebt = 0;
-      if (totalPlansPrice > 0) {
-        calcDebt = Math.max(0, (totalPlansPrice + totalRefunds) - (totalIncomes + totalDiscounts));
-      } else if (totalDebts > 0) {
-        calcDebt = Math.max(0, (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts));
-      } else {
-        calcDebt = Math.max(0, (patient?.total_debt || 0));
-      }
+      const balance = patientBalance(patientId, pays || [], plans || []);
+      const calcDebt = balance.charges > 0 || balance.income > 0 ? balance.debt : Math.max(0, Number(patient?.total_debt) || 0);
       setRealPatientDebt(calcDebt);
     } catch {
       setRealPatientDebt(patient?.total_debt ?? 0);
@@ -1077,14 +1057,12 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
               base44.entities.Payment.filter({ patient_id: savedPatientId }, 'date', 5000),
               base44.entities.TreatmentPlan.filter({ patient_id: savedPatientId }, '-created_date', 100).catch(() => []),
             ]);
-            const { totals } = computePatientBalances(
-              unionPayments(allPays, [newPayment]),
-              allPlans || [],
-            );
-            const planTotal = (allPlans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+            const savedRows = unionPayments(allPays, [newPayment]);
+            const balance = patientBalance(savedPatientId, savedRows, allPlans || []);
+            const { totals } = computePatientBalances(savedRows, allPlans || []);
             const row = totals[savedPatientId];
-            const finalDebt = row ? row.currentDebt : Math.max(0, planTotal);
-            const finalPaid = row ? row.totalPaid : 0;
+            const finalDebt = balance.debt;
+            const finalPaid = row ? row.totalPaid : balance.income;
 
             await base44.entities.Patient.update(savedPatientId, {
               total_paid: finalPaid,
@@ -1379,19 +1357,8 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
       // 3. Bemorning barcha to'lov va rejalaridan umumiy real-time hisob-kitob
       const totalIncomes = paysList.filter(pay => pay.type?.toLowerCase() === 'income').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
       const totalDiscounts = paysList.filter(pay => pay.type?.toLowerCase() === 'discount').reduce((s, pay) => s + Math.abs(Number(pay.amount) || 0), 0);
-      const totalRefunds = paysList.filter(pay => pay.type?.toLowerCase() === 'refund').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
-
-      let currentDebt = 0;
-      if (totalPlansPrice > 0) {
-        const net = totalIncomes - totalPlansPrice - totalRefunds;
-        currentDebt = net < 0 ? Math.abs(net) : 0;
-      } else if (totalDebts > 0) {
-        const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
-        currentDebt = net < 0 ? Math.abs(net) : 0;
-      } else {
-        const net = totalIncomes - totalRefunds;
-        currentDebt = net < 0 ? Math.abs(net) : 0;
-      }
+      const live = patientBalance(p.patient_id, paysList, plansList);
+      const currentDebt = live.debt;
 
       setSelectedPaymentPatientData({
         totalPaid: totalIncomes,
@@ -2070,27 +2037,16 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
             base44.entities.Payment.filter({ patient_id: form.patient_id }, 'date', 5000),
             base44.entities.TreatmentPlan.filter({ patient_id: form.patient_id }, '-created_date', 100)
           ]);
-          const totalIncomes = (allPays || []).filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-          const totalDiscounts = (allPays || []).filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
-          const totalRefunds = (allPays || []).filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-          const totalPlansPrice = (allPlans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
-
-          // Agar rejalar bo'lsa: qarz = rejaJami (chegirmasi chegirilgan) - to'langan
-          // Agar reja yo'q bo'lsa: qarz = 0 (faqat debt-type to'lovlarga qaraladi)
-          let realDebt = 0;
-          if (totalPlansPrice > 0) {
-            const netBalance = totalIncomes - totalPlansPrice;
-            realDebt = netBalance < 0 ? Math.abs(netBalance) : 0;
-          } else {
-            const totalDebts = (allPays || []).filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-            realDebt = Math.max(0, (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts));
-          }
+          const totalIncomes = (allPays || []).filter(p => !p.type || p.type?.toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+          const live = patientBalance(form.patient_id, allPays || [], allPlans || []);
+          const pat = patients.find(p => p.id === form.patient_id);
+          const storedDebt = Number(pat?.total_debt) || 0;
+          const realDebt = live.charges <= 0 && (allPlans || []).length === 0 && storedDebt > 0 ? storedDebt : live.debt;
 
           // Summa avtomatik to'ldirilmaydi: reja/xizmat tanlanganda yoki qo'lda kiritiladi
           setRealPatientDebt(realDebt);
 
-          const pat = patients.find(p => p.id === form.patient_id);
-          if (pat && form.patient_id !== 'patient-y2ii8ynf2' && Number(pat.total_debt) !== realDebt) {
+          if (pat && form.patient_id !== 'patient-y2ii8ynf2' && storedDebt !== realDebt && !(live.charges <= 0 && storedDebt > realDebt)) {
             base44.entities.Patient.update(form.patient_id, { total_debt: realDebt, total_paid: totalIncomes }).catch(() => {});
             setPatients(prev => prev.map(pt => pt.id === form.patient_id ? { ...pt, total_debt: realDebt, total_paid: totalIncomes } : pt));
           }

@@ -57,16 +57,22 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('token');
       try {
-        const { data: userResult, error } = await supabase.auth.getUser();
+        const [{ data: userResult, error }, { data: sessionData }] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.auth.getSession(),
+        ]);
         const meta = userResult?.user?.app_metadata || {};
         const userId = meta.crm_user_id || localStorage.getItem('user_id');
         if (error || !userResult?.user || !userId) {
           setIsLoadingAuth(false);
           return;
         }
-        const { data: sessionData } = await supabase.auth.getSession();
         setToken(sessionData?.session?.access_token || null);
-        const foundUser = await base44.auth.getUserById(userId);
+        const clinicHint = localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || '';
+        const [foundUser, hintedClinic] = await Promise.all([
+          base44.auth.getUserById(userId),
+          clinicHint ? base44.clinic.getById(clinicHint) : Promise.resolve(null),
+        ]);
         if (!foundUser) {
           setIsLoadingAuth(false);
           return;
@@ -78,7 +84,9 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         setIsAdmin(safeUser.role === 'admin');
         setIsDoctor(safeUser.role === 'doctor');
-        const clinic = await base44.clinic.getById(foundUser.clinic_id);
+        const clinic = hintedClinic && hintedClinic.id === foundUser.clinic_id
+          ? hintedClinic
+          : await base44.clinic.getById(foundUser.clinic_id);
         if (clinic) applyClinicSession(clinic);
       } catch {
         setIsAuthenticated(false);

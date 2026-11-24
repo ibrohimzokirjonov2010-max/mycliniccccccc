@@ -21,6 +21,7 @@ import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { motion } from 'framer-motion';
 import { formatPhone, cn } from '@/lib/utils';
 import { computePatientBalances } from '@/lib/paymentDebt';
+import { debtByPatient } from '@/lib/patientBalance';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
@@ -76,9 +77,10 @@ export default function Debts() {
     async function load() {
       try {
         setLoading(true);
-        const [allPatientsRaw, allPayments] = await Promise.all([
-          base44.entities.Patient.list('-created_date', 200),
-          base44.entities.Payment.list('-created_date', 500),
+        const [allPatientsRaw, allPayments, allPlans] = await Promise.all([
+          base44.entities.Patient.list('-created_date', 500),
+          base44.entities.Payment.list('-created_date', 2000),
+          base44.entities.TreatmentPlan.list('-created_date', 1000).catch(() => []),
         ]);
 
         const allPatients = isDoctor && user?.id
@@ -107,12 +109,13 @@ export default function Debts() {
           if (type === 'discount') debtMap[pid].discount += Math.abs(pay.amount || 0);
         }
 
+        const computed = debtByPatient(allPatients, allPayments, allPlans || []);
         const enriched = allPatients
           .map(p => {
             const d = debtMap[p.id];
-            const realDebt = p.total_debt || 0;
-            const realPaid = p.total_paid || 0;
-            return { ...p, real_debt: realDebt, real_paid: realPaid, last_update: d?.last_date };
+            const realDebt = computed[p.id] ?? (Number(p.total_debt) || 0);
+            const realPaid = d?.paid || Number(p.total_paid) || 0;
+            return { ...p, real_debt: realDebt, total_debt: realDebt, real_paid: realPaid, last_update: d?.last_date };
           })
           .filter(p => p.real_debt > 0)
           .sort((a, b) => b.real_debt - a.real_debt);

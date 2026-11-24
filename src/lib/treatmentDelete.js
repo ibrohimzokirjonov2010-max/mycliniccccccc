@@ -1,6 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { isPlanLocked } from '@/lib/planLock';
-import { isLinkedPlanInternal } from '@/lib/paymentDebt';
+import { patientBalance } from '@/lib/patientBalance';
 import { planImplantIds, setPlanOptOut } from '@/lib/implantPlanModel';
 
 const LOCKED_PATIENT = 'patient-y2ii8ynf2';
@@ -68,64 +68,16 @@ export async function syncPatientBalance(patientId) {
     base44.entities.Payment.filter({ patient_id: patientId }, '-date', 5000),
     base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 50),
   ]);
-  const sum = (type) => (payments || [])
-    .filter((p) => String(p.type || '').toLowerCase() === type)
-    .reduce((total, p) => total + (Number(p.amount) || 0), 0);
-  const incomes = sum('income');
-  const debts = sum('debt');
-  const refunds = sum('refund');
-  const discounts = (payments || [])
-    // Plan-linked discount rows (wizard "Avtomatik chegirma") are already inside that plan's Debt row.
-    .filter((p) => String(p.type || '').toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
-    .reduce((total, p) => total + Math.abs(Number(p.amount) || 0), 0);
-  const isCancelledPlan = (plan) => ['cancelled', 'canceled', 'otkaz'].includes(String(plan?.status || '').trim().toLowerCase());
-  const isActiveBillablePlan = (plan) => {
-    const st = String(plan?.status || '').trim().toLowerCase();
-    return st === 'in progress' || st === 'completed' || st === 'done' || st === 'bajarildi';
-  };
-  const cancelledPlanIds = new Set((plans || []).filter(isCancelledPlan).map((p) => String(p.id)));
-  // Fallback faqat aktiv/tugagan rejalar — Planned/Cancelled hech qachon plansPrice ga kirmasin.
-  // (Tezkor Planned + Debt qatorlari activeDebts yo'li orqali hisoblanadi.)
-  const plansPrice = (plans || [])
-    .filter((plan) => isActiveBillablePlan(plan))
-    .reduce((total, plan) => total + (Number(plan.total_price) || 0), 0);
-  // Debt rows linked to cancelled (otkaz) plans must not keep the patient in debt.
-  const activeDebts = (payments || [])
-    .filter((p) => {
-      if (String(p.type || '').toLowerCase() !== 'debt') return false;
-      if (cancelledPlanIds.size === 0) return true;
-      const notes = String(p.notes || '');
-      const linked = p.plan_id != null && p.plan_id !== ''
-        ? String(p.plan_id)
-        : (notes.match(/Linked to Plan:\s*([^\s|]+)/i)?.[1] || notes.match(/\[\[plan_id:([^\]]+)\]\]/)?.[1] || '');
-      if (linked && cancelledPlanIds.has(String(linked))) return false;
-      // Fallback: notes may wrap / decode oddly — any cancelled plan id mentioned is enough.
-      for (const id of cancelledPlanIds) {
-        if (id && (notes.includes(id) || String(p.plan_id || '') === id || String(p.category || '').includes(id))) return false;
-      }
-      return true;
-    })
-    .reduce((total, p) => total + (Number(p.amount) || 0), 0);
-  const debtRows = (payments || []).filter((p) => String(p.type || '').toLowerCase() === 'debt');
-  let debt = 0;
-  if (debtRows.length > 0 || activeDebts > 0) {
-    // Debt qatorlari bo'lsa faqat shu yo'l — cancelled exclusion bilan.
-    const net = incomes + discounts - activeDebts - refunds;
-    debt = net < 0 ? Math.abs(net) : 0;
-  } else if (plansPrice > 0) {
-    const net = incomes + discounts - plansPrice;
-    debt = net < 0 ? Math.abs(net) : 0;
-  } else {
-    const net = incomes - refunds;
-    debt = net < 0 ? Math.abs(net) : 0;
-  }
+  const balance = patientBalance(patientId, payments, plans);
+  const incomes = balance.income;
+  const debt = balance.debt;
   await base44.entities.Patient.update(patientId, {
     total_paid: incomes,
     total_debt: debt,
   });
   const done = (plans || []).reduce((count, plan) => count + (plan.services || []).filter(isDone).length, 0);
   const all = (plans || []).reduce((count, plan) => count + (plan.services || []).length, 0);
-  return { debt, paid: incomes, done, total: all, plansPrice };
+  return { debt, paid: incomes, done, total: all, plansPrice: balance.charges };
 }
 
 /**

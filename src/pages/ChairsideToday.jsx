@@ -26,7 +26,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { getTashkentDate } from '@/lib/telegramReminderService';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, formatPhone } from '@/lib/utils';
 import { formatClinicDateWithWeekday } from '@/lib/clinicTime';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -163,12 +163,7 @@ export default function ChairsideToday() {
     if (!q) return todayQueue;
     return todayQueue.filter((a) => `${a._patientName} ${a._phone} ${a.doctor_name || ''} ${a.service_name || ''}`.toLowerCase().includes(q));
   }, [todayQueue, query]);
-  const fmtPhone = (ph) => {
-    const d = String(ph || '').replace(/\D/g, '');
-    if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
-    if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
-    return ph;
-  };
+  const fmtPhone = (ph) => (ph ? formatPhone(ph) : '');
 
   const openPatient = (appt) => {
     if (!appt.patient_id) return;
