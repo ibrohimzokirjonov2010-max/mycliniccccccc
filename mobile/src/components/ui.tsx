@@ -51,7 +51,12 @@ export function Button({
       ]}
     >
       {loading ? <ActivityIndicator color={isGhost ? colors.brand : '#fff'} /> : (
-        <Text style={[styles.buttonText, isGhost && styles.ghostText, tone === 'danger' && styles.dangerText]}>{label}</Text>
+        <Text
+          maxFontSizeMultiplier={2}
+          style={[styles.buttonText, isGhost && styles.ghostText, tone === 'danger' && styles.dangerText]}
+        >
+          {label}
+        </Text>
       )}
     </Pressable>
   );
@@ -60,8 +65,9 @@ export function Button({
 export function Field({ label, ...props }: TextInputProps & { label: string }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text maxFontSizeMultiplier={2} style={styles.fieldLabel}>{label}</Text>
       <TextInput
+        maxFontSizeMultiplier={2}
         placeholderTextColor={colors.muted}
         style={styles.input}
         {...props}

@@ -28,6 +28,16 @@ export type Dict = {
     missing_config: string;
     weak_password: string;
     generic: string;
+    account_disabled: string;
+    confirm_required: string;
+    unauthorized: string;
+    forbidden: string;
+    forbidden_origin: string;
+    method_not_allowed: string;
+    too_many_requests: string;
+    db_error: string;
+    server_error: string;
+    server_not_configured: string;
     offline: string;
     phone: string;
     time: string;
@@ -128,10 +138,15 @@ export type Dict = {
     typeName: string;
     current: string;
     submit: string;
+    confirmTitle: string;
+    confirmBody: string;
+    confirmAction: string;
+    blockedTitle: string;
     doneTitle: string;
     doneBody: string;
     pendingTitle: string;
     pendingBody: string;
+    webPage: string;
     support: string;
     signOut: string;
   };
@@ -166,6 +181,16 @@ export const uz: Dict = {
     missing_config: 'Ilova sozlanmagan: EXPO_PUBLIC_SUPABASE_ANON_KEY kerak.',
     weak_password: 'Parol kamida 8 ta belgidan iborat bo‘lsin',
     generic: 'Xatolik yuz berdi. Qayta urinib ko‘ring.',
+    account_disabled: 'Bu hisob yopilgan. Qayta ochish uchun klinika administratori yoki qo‘llab-quvvatlashga yozing.',
+    confirm_required: 'Tasdiqlash yuborilmadi. Qayta urinib ko‘ring.',
+    unauthorized: 'Sessiya tugagan. Qayta kiring.',
+    forbidden: 'Bu hisobni o‘chirish mumkin emas.',
+    forbidden_origin: 'So‘rov rad etildi.',
+    method_not_allowed: 'So‘rov usuli qo‘llab-quvvatlanmaydi.',
+    too_many_requests: 'Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring.',
+    db_error: 'Hisob o‘chirilmadi. Ma’lumotlar o‘zgarmadi.',
+    server_error: 'Server xatosi. Qayta urinib ko‘ring.',
+    server_not_configured: 'Server sozlanmagan. Qo‘llab-quvvatlashga yozing.',
     offline: 'Internet yo‘q. Ulangach qayta urinib ko‘ring.',
     phone: 'Telefon raqamini to‘liq kiriting',
     time: 'Vaqtni HH:MM ko‘rinishida kiriting',
@@ -278,14 +303,19 @@ export const uz: Dict = {
   },
   deleteAccount: {
     title: 'Hisobni o‘chirish',
-    body: 'Bu amal shu klinika hisobingizga kirishni yopadi. Bemor yozuvlari klinika ma’lumoti bo‘lib qolishi mumkin. Davom etish uchun loginni va joriy parolni kiriting.',
+    body: 'Bu amal shu klinika hisobingizga kirishni yopadi. Bemorlar, qabullar va to‘lovlar o‘chirilmaydi.',
     typeName: 'Loginni tasdiqlang',
     current: 'Joriy parol',
-    submit: 'Hisobni o‘chirishni so‘rash',
+    submit: 'Hisobni o‘chirish',
+    confirmTitle: 'Hisobni o‘chirasizmi?',
+    confirmBody: 'Kirish yopiladi. Bemor yozuvlari klinika ma’lumoti bo‘lib qoladi.',
+    confirmAction: 'O‘chirish',
+    blockedTitle: 'Hisob o‘chirilmadi',
     doneTitle: 'Hisob o‘chirildi',
     doneBody: 'Hisobingiz o‘chirildi va bu qurilmadagi sessiya yopildi.',
     pendingTitle: 'So‘rov qabul qilindi',
     pendingBody: 'Server hozircha hisobni o‘zi o‘chirmaydi. So‘rov ilovada qayd etildi. Klinika administratori yoki qo‘llab-quvvatlash xizmati uni yakunlashi kerak.',
+    webPage: 'Veb-sahifani ochish',
     support: 'Qo‘llab-quvvatlashga yozish',
     signOut: 'Chiqish',
   },
@@ -332,6 +362,16 @@ export const ru: Dict = {
     missing_config: 'Приложение не настроено: нужен EXPO_PUBLIC_SUPABASE_ANON_KEY.',
     weak_password: 'Пароль должен содержать не меньше 8 символов',
     generic: 'Произошла ошибка. Попробуйте ещё раз.',
+    account_disabled: 'Этот аккаунт закрыт. Чтобы открыть его снова, напишите администратору клиники или в поддержку.',
+    confirm_required: 'Подтверждение не отправлено. Попробуйте ещё раз.',
+    unauthorized: 'Сессия истекла. Войдите снова.',
+    forbidden: 'Этот аккаунт нельзя удалить.',
+    forbidden_origin: 'Запрос отклонён.',
+    method_not_allowed: 'Такой запрос не поддерживается.',
+    too_many_requests: 'Слишком много попыток. Повторите позже.',
+    db_error: 'Аккаунт не удалён. Данные не изменились.',
+    server_error: 'Ошибка сервера. Попробуйте ещё раз.',
+    server_not_configured: 'Сервер не настроен. Напишите в поддержку.',
     offline: 'Нет интернета. Повторите, когда связь появится.',
     phone: 'Введите полный номер телефона',
     time: 'Введите время в формате ЧЧ:ММ',
@@ -444,14 +484,19 @@ export const ru: Dict = {
   },
   deleteAccount: {
     title: 'Удаление аккаунта',
-    body: 'Это закроет доступ этой учётной записи к клинике. Карточки пациентов могут остаться данными клиники. Для продолжения введите логин и текущий пароль.',
+    body: 'Это закроет доступ этой учётной записи к клинике. Пациенты, приёмы и оплаты не удаляются.',
     typeName: 'Подтвердите логин',
     current: 'Текущий пароль',
-    submit: 'Запросить удаление',
+    submit: 'Удалить аккаунт',
+    confirmTitle: 'Удалить аккаунт?',
+    confirmBody: 'Вход будет закрыт. Записи пациентов останутся данными клиники.',
+    confirmAction: 'Удалить',
+    blockedTitle: 'Аккаунт не удалён',
     doneTitle: 'Аккаунт удалён',
     doneBody: 'Учётная запись удалена, сессия на этом устройстве закрыта.',
     pendingTitle: 'Запрос принят',
     pendingBody: 'Сервер пока не удаляет аккаунт сам. Запрос сохранён в приложении. Его должен завершить администратор клиники или поддержка.',
+    webPage: 'Открыть страницу',
     support: 'Написать в поддержку',
     signOut: 'Выйти',
   },
@@ -498,6 +543,16 @@ export const en: Dict = {
     missing_config: 'The app is not configured: EXPO_PUBLIC_SUPABASE_ANON_KEY is required.',
     weak_password: 'Use at least 8 characters',
     generic: 'Something went wrong. Try again.',
+    account_disabled: 'This account is closed. Ask a clinic administrator or support to reopen it.',
+    confirm_required: 'Confirmation was not sent. Try again.',
+    unauthorized: 'Your session expired. Sign in again.',
+    forbidden: 'This account cannot be deleted.',
+    forbidden_origin: 'The request was rejected.',
+    method_not_allowed: 'This request is not supported.',
+    too_many_requests: 'Too many attempts. Try again later.',
+    db_error: 'The account was not deleted. Nothing was changed.',
+    server_error: 'Server error. Try again.',
+    server_not_configured: 'The server is not configured. Contact support.',
     offline: 'You are offline. Try again when you are back online.',
     phone: 'Enter the full phone number',
     time: 'Enter a time as HH:MM',
@@ -610,14 +665,19 @@ export const en: Dict = {
   },
   deleteAccount: {
     title: 'Delete account',
-    body: 'This closes this account’s access to the clinic. Patient records may remain as clinic data. Enter your username and current password to continue.',
+    body: 'This closes this account’s access to the clinic. Patients, visits, and payments are not deleted.',
     typeName: 'Confirm username',
     current: 'Current password',
-    submit: 'Request account deletion',
+    submit: 'Delete account',
+    confirmTitle: 'Delete this account?',
+    confirmBody: 'Sign-in will close. Patient records stay as clinic data.',
+    confirmAction: 'Delete',
+    blockedTitle: 'Account not deleted',
     doneTitle: 'Account deleted',
     doneBody: 'Your account was deleted and the session on this device was closed.',
     pendingTitle: 'Request recorded',
     pendingBody: 'The server does not delete the account by itself yet. The request is saved in the app. A clinic administrator or support must finish it.',
+    webPage: 'Open the web page',
     support: 'Contact support',
     signOut: 'Sign out',
   },

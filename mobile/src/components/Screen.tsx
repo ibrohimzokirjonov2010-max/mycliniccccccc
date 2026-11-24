@@ -1,12 +1,11 @@
 import { type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { colors } from '@/theme';
 import { useI18n } from '@/i18n';
 import { OfflineBanner } from '@/components/ui';
 import { Icon, icons } from '@/components/Icon';
-import { Pressable } from 'react-native';
 
 export function Screen({
   children,
@@ -20,11 +19,13 @@ export function Screen({
   footer?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const wide = width >= 768;
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <OfflineBanner />
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, wide && styles.wideContent]}
         keyboardShouldPersistTaps="handled"
         refreshControl={onRefresh ? (
           <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.brand} colors={[colors.brand]} />
@@ -32,7 +33,11 @@ export function Screen({
       >
         {children}
       </ScrollView>
-      {footer ? <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>{footer}</View> : null}
+      {footer ? (
+        <View style={[styles.footer, wide && styles.wideContent, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          {footer}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -63,7 +68,8 @@ export function BackHeader({ title }: { title: string }) {
 
 const styles = StyleSheet.create({
   safe: { backgroundColor: colors.bg, flex: 1 },
-  content: { gap: 12, padding: 16, paddingBottom: 28 },
+  content: { gap: 12, padding: 16, paddingBottom: 28, width: '100%' },
+  wideContent: { alignSelf: 'center', maxWidth: 960, paddingHorizontal: 28, width: '100%' },
   footer: { padding: 16, paddingTop: 0 },
   titleRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   titleCopy: { flex: 1, gap: 2 },

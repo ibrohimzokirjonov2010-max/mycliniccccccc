@@ -1,39 +1,45 @@
 import { useState } from 'react';
-import { Linking, StyleSheet, Text } from 'react-native';
+import { Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Screen, BackHeader } from '@/components/Screen';
-import { Button, ErrorBox, Field } from '@/components/ui';
-import { login, requestAccountDeletion } from '@/api/session';
+import { Button, ErrorBox } from '@/components/ui';
+import { requestAccountDeletion } from '@/api/session';
 import { config } from '@/api/config';
+import { setAuthNotice } from '@/auth/notice';
 import { useAuth } from '@/auth/AuthContext';
 import { errorText, useI18n } from '@/i18n';
 import { isApiError } from '@/api/errors';
-import { colors } from '@/theme';
+import { colors, radius } from '@/theme';
 import type { DeletionResult } from '@/api/session';
 
 export default function DeleteAccountScreen() {
   const { user, logout } = useAuth();
   const { t } = useI18n();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DeletionResult | null>(null);
 
+  const shownError = (caught: unknown) => {
+    if (isApiError(caught) && caught.serverMessage) return caught.serverMessage;
+    return errorText(isApiError(caught) ? caught.code : 'generic', t);
+  };
+
   const submit = async () => {
     if (!user) return;
-    if (username.trim().toLowerCase() !== user.username.toLowerCase() || !password) {
-      setError('required');
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
-      await login({ clinicId: user.clinic_id, username: user.username, password, remember: true });
       const next = await requestAccountDeletion();
+      setConfirming(false);
+      if (next.outcome === 'deleted' || next.outcome === 'requested') {
+        setAuthNotice(next.message || (next.outcome === 'deleted' ? t.deleteAccount.doneBody : t.deleteAccount.pendingBody));
+        await logout();
+        return;
+      }
       setResult(next);
-      if (next.deleted) await logout();
     } catch (caught) {
-      setError(isApiError(caught) ? caught.code : 'generic');
+      setConfirming(false);
+      setError(shownError(caught));
     } finally {
       setLoading(false);
     }
@@ -44,26 +50,46 @@ export default function DeleteAccountScreen() {
     void Linking.openURL(`${config.supportUrl}?text=${text}`);
   };
 
-  if (result) {
-    const deleted = result.deleted;
+  if (result?.outcome === 'fallback') {
     return (
       <Screen>
         <BackHeader title={t.deleteAccount.title} />
-        <Text style={styles.title}>{deleted ? t.deleteAccount.doneTitle : t.deleteAccount.pendingTitle}</Text>
-        <Text style={styles.body}>{deleted ? t.deleteAccount.doneBody : t.deleteAccount.pendingBody}</Text>
-        {!deleted ? <Button label={t.deleteAccount.support} tone="ghost" onPress={support} /> : null}
-        <Button label={t.deleteAccount.signOut} onPress={() => { void logout(); }} />
+        <Text style={styles.title}>{t.deleteAccount.pendingTitle}</Text>
+        <Text style={styles.body}>{t.deleteAccount.pendingBody}</Text>
+        <Button label={t.deleteAccount.webPage} tone="ghost" onPress={() => { void Linking.openURL(config.deleteAccountUrl); }} />
+        <Button label={t.deleteAccount.support} tone="ghost" onPress={support} />
+      </Screen>
+    );
+  }
+
+  if (result?.outcome === 'blocked') {
+    return (
+      <Screen>
+        <BackHeader title={t.deleteAccount.title} />
+        <Text style={styles.title}>{t.deleteAccount.blockedTitle}</Text>
+        <Text style={styles.body}>{result.message || errorText(result.code, t)}</Text>
+        <Button label={t.deleteAccount.support} tone="ghost" onPress={support} />
       </Screen>
     );
   }
 
   return (
-    <Screen footer={<Button label={t.deleteAccount.submit} tone="danger" onPress={() => { void submit(); }} loading={loading} />}>
+    <Screen footer={<Button label={t.deleteAccount.submit} tone="danger" onPress={() => setConfirming(true)} />}>
       <BackHeader title={t.deleteAccount.title} />
       <Text style={styles.body}>{t.deleteAccount.body}</Text>
-      <Field label={t.deleteAccount.typeName} autoCapitalize="none" autoCorrect={false} value={username} onChangeText={setUsername} />
-      <Field label={t.deleteAccount.current} secureTextEntry value={password} onChangeText={setPassword} autoCapitalize="none" />
-      {error ? <ErrorBox message={errorText(error, t)} /> : null}
+      {error ? <ErrorBox message={error} /> : null}
+      <Modal animationType="fade" transparent visible={confirming} onRequestClose={() => { if (!loading) setConfirming(false); }}>
+        <View style={styles.backdrop}>
+          <View style={styles.dialog}>
+            <Text style={styles.title}>{t.deleteAccount.confirmTitle}</Text>
+            <Text style={styles.body}>{t.deleteAccount.confirmBody}</Text>
+            <Button label={t.deleteAccount.confirmAction} tone="danger" onPress={() => { void submit(); }} loading={loading} />
+            <Pressable accessibilityRole="button" disabled={loading} onPress={() => setConfirming(false)}>
+              <Text style={styles.cancel}>{t.common.cancel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -71,4 +97,7 @@ export default function DeleteAccountScreen() {
 const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 22, fontWeight: '800' },
   body: { color: colors.muted, fontSize: 15, lineHeight: 22 },
+  backdrop: { alignItems: 'center', backgroundColor: 'rgba(15, 23, 42, 0.45)', flex: 1, justifyContent: 'center', padding: 24 },
+  dialog: { backgroundColor: '#fff', borderRadius: radius.lg, gap: 12, padding: 20, width: '100%', maxWidth: 420 },
+  cancel: { color: colors.muted, fontSize: 15, fontWeight: '700', textAlign: 'center' },
 });

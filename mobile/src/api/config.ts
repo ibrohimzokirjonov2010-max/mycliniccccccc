@@ -18,7 +18,8 @@ export const config = {
   apiBaseUrl: (env('EXPO_PUBLIC_API_BASE_URL') || productionApi).replace(/\/$/, ''),
   supabaseUrl: env('EXPO_PUBLIC_SUPABASE_URL') || 'https://zvyggjldzkxwufpnaatr.supabase.co',
   supabaseAnonKey: env('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
-  privacyPolicyUrl: env('EXPO_PUBLIC_PRIVACY_POLICY_URL') || `${productionApi}/maxfiylik`,
+  privacyPolicyUrl: env('EXPO_PUBLIC_PRIVACY_POLICY_URL') || `${productionApi}/privacy`,
+  deleteAccountUrl: env('EXPO_PUBLIC_DELETE_ACCOUNT_URL') || `${productionApi}/delete-account`,
   supportUrl: env('EXPO_PUBLIC_SUPPORT_URL') || 'https://t.me/dentist_shaxin',
 };
 

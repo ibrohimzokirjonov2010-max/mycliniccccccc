@@ -2,8 +2,9 @@ export class ApiError extends Error {
   constructor(
     public code: string,
     public status = 0,
+    public serverMessage?: string,
   ) {
-    super(code);
+    super(serverMessage || code);
     this.name = 'ApiError';
   }
 }

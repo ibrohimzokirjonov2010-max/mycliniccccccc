@@ -36,6 +36,7 @@ export async function authRequest(
 
 export function errorCode(status: number, data: Record<string, unknown> | null): string {
   const code = typeof data?.error === 'string' ? data.error : '';
+  if (status === 403 && code === 'account_disabled') return 'account_disabled';
   if (status === 401) return 'invalid_credentials';
   if (status === 402 || code === 'subscription_expired') return 'subscription_expired';
   if (status === 403 && code === 'clinic_inactive') return 'clinic_inactive';
@@ -43,4 +44,9 @@ export function errorCode(status: number, data: Record<string, unknown> | null):
   if (status === 0) return 'network';
   if (code) return code;
   return 'generic';
+}
+
+export function serverMessage(data: Record<string, unknown> | null): string | undefined {
+  const message = data?.message;
+  return typeof message === 'string' && message.trim() ? message.trim() : undefined;
 }

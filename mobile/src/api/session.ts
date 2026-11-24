@@ -1,5 +1,5 @@
 import { isExpired } from '@/lib/dates';
-import { authRequest, errorCode } from '@/api/authApi';
+import { authRequest, errorCode, serverMessage } from '@/api/authApi';
 import { ApiError } from '@/api/errors';
 import { assertConfigured } from '@/api/config';
 import { secureGet, secureRemove, secureSet, setEphemeralSession } from '@/api/sessionStore';
@@ -143,17 +143,44 @@ export async function changePassword(userId: string, password: string): Promise<
   }
 }
 
-export type DeletionResult = { deleted: boolean; code: string; requestedAt: string };
+export type DeletionOutcome = 'deleted' | 'requested' | 'fallback' | 'blocked';
 
+export type DeletionResult = {
+  outcome: DeletionOutcome;
+  code: string;
+  message?: string;
+};
+
+/**
+ * POST /api/auth?action=delete-account
+ * Authorization: Bearer <login session.access_token>
+ * Body: {"confirm": true}  — JSON boolean, no password.
+ * 404 means the action is not deployed yet; the app keeps the support request flow.
+ */
 export async function requestAccountDeletion(): Promise<DeletionResult> {
   const token = await currentAccessToken();
   if (!token) throw new ApiError('unauthorized', 401);
-  const requestedAt = new Date().toISOString();
   const result = await authRequest('delete-account', { body: { confirm: true }, token });
-  const deleted = result.status === 200 && result.data?.ok === true;
-  const code = deleted ? 'deleted' : errorCode(result.status, result.data);
-  await secureSet(DELETE_KEY, JSON.stringify({ requestedAt, code, deleted }));
-  return { deleted, code, requestedAt };
+  const data = result.data;
+  const message = serverMessage(data);
+  const error = typeof data?.error === 'string' ? data.error : '';
+
+  if (result.status === 200 && data?.ok === true && data.deleted === true) {
+    return { outcome: 'deleted', code: 'deleted' };
+  }
+  if (result.status === 200 && data?.ok === true && data.deletion_requested === true) {
+    return { outcome: 'requested', code: 'deletion_requested', message };
+  }
+  if (result.status === 404) {
+    const requestedAt = new Date().toISOString();
+    await secureSet(DELETE_KEY, JSON.stringify({ requestedAt, code: 'pending', deleted: false }));
+    return { outcome: 'fallback', code: 'pending' };
+  }
+  if (result.status === 409 && (error === 'last_admin' || error === 'account_referenced')) {
+    return { outcome: 'blocked', code: error, message };
+  }
+
+  throw new ApiError(error || errorCode(result.status, data), result.status, message);
 }
 
 export async function readDeletionRequest(): Promise<{ requestedAt: string; code: string } | null> {

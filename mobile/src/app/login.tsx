@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Button, ErrorBox, Field } from '@/components/ui';
 import { useAuth } from '@/auth/AuthContext';
+import { takeAuthNotice } from '@/auth/notice';
 import { errorText, useI18n } from '@/i18n';
 import { isApiError } from '@/api/errors';
 import { colors, radius } from '@/theme';
@@ -17,7 +18,12 @@ export default function LoginScreen() {
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(bootError);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setNotice(takeAuthNotice());
+  }, []);
 
   const submit = async () => {
     if (!clinicId.trim() || !username.trim() || !password) {
@@ -63,6 +69,7 @@ export default function LoginScreen() {
             <View style={[styles.box, remember && styles.boxOn]}>{remember ? <Text style={styles.check}>✓</Text> : null}</View>
             <Text style={styles.rememberText}>{t.login.remember}</Text>
           </Pressable>
+          {notice ? <ErrorBox message={notice} /> : null}
           {error ? <ErrorBox message={errorText(error, t)} /> : null}
           <Button label={t.login.submit} onPress={() => { void submit(); }} loading={loading} />
         </View>

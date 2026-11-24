@@ -37,6 +37,5 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+# Play Console key. Download it from Google and keep it out of git.
+store/google-play-service-account.json
