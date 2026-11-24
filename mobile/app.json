@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "My Clinic",
+    "slug": "my-clinic",
+    "scheme": "myclinic",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.myclinic.crm",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "My Clinic"
+      }
+    },
+    "android": {
+      "package": "app.myclinic.crm",
+      "adaptiveIcon": {
+        "backgroundColor": "#1499AD",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1499AD",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180
+        }
+      ]
+    ],
+    "extra": {
+      "privacyPolicyUrl": "https://app-shahobidin-4.vercel.app/maxfiylik",
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    }
+  }
+}
