@@ -155,7 +155,7 @@ export type DeletionResult = {
  * POST /api/auth?action=delete-account
  * Authorization: Bearer <login session.access_token>
  * Body: {"confirm": true}  — JSON boolean, no password.
- * 404 means the action is not deployed yet; the app keeps the support request flow.
+ * 404, or 400 bad_request before that action is deployed, keeps the support request flow.
  */
 export async function requestAccountDeletion(): Promise<DeletionResult> {
   const token = await currentAccessToken();
@@ -171,7 +171,7 @@ export async function requestAccountDeletion(): Promise<DeletionResult> {
   if (result.status === 200 && data?.ok === true && data.deletion_requested === true) {
     return { outcome: 'requested', code: 'deletion_requested', message };
   }
-  if (result.status === 404) {
+  if (result.status === 404 || (result.status === 400 && (error === 'bad_request' || error === 'unknown_action'))) {
     const requestedAt = new Date().toISOString();
     await secureSet(DELETE_KEY, JSON.stringify({ requestedAt, code: 'pending', deleted: false }));
     return { outcome: 'fallback', code: 'pending' };
